@@ -228,7 +228,7 @@ def get_map(model, dataloader, cuda, conf_list, nms_conf, classes,
                     best_map = results[0]
                     best_ap = results[1]
                     best_conf = confidence
-            if np.round(confidence, 2) == specific_conf:
+            if np.round(confidence, 3) == specific_conf:
                 specific_conf_map = results[0]
                 specific_conf_ap = results[1]
 
