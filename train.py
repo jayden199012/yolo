@@ -17,7 +17,7 @@ from tensorboardX import SummaryWriter
 
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
-          conf_list, classes, nms_conf):
+          conf_list, classes, iou_conf):
     config["global_step"] = 0
 #    map_counter = 0
 
@@ -88,7 +88,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                     # results consist best_map, best_ap, best_conf,
                     # specific_conf_map, specific_conf_ap
                     map_results = get_map(model, test_loader, cuda, conf_list,
-                                          nms_conf, classes, train=True)
+                                          iou_conf, classes, train=True)
                     map_results_names = ["best_map", "best_ap", "best_conf",
                                          "specific_conf_map",
                                          "specific_conf_ap"]
@@ -112,7 +112,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
     # model.train(False)
     _save_checkpoint(model.state_dict(), config)
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
-        map_frame = get_map(model, test_loader, cuda, conf_list, nms_conf,
+        map_frame = get_map(model, test_loader, cuda, conf_list, iou_conf,
                             classes, train=False, loop_conf=True)
     # model.train(True)
     logging.info("Bye~")
@@ -131,7 +131,7 @@ def _save_checkpoint(state_dict, config, evaluate_func=None):
 
 
 def main(classes, conf_list, label_csv_mame, img_txt_path, root_dir,
-         cuda=True, specific_conf=0.5, nms_conf=0.5):
+         cuda=True, specific_conf=0.5, iou_conf=0.5):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     logging.basicConfig(level=logging.DEBUG,
@@ -195,7 +195,7 @@ def main(classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     # Start training
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = train(model, optimizer, cuda, config, train_loader,
-                          test_loader, conf_list, classes, nms_conf)
+                          test_loader, conf_list, classes, iou_conf)
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame
 

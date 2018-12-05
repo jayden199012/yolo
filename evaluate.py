@@ -4,7 +4,7 @@ import torch
 import time
 import pandas as pd
 import numpy as np
-from utilis import compute_ap, filter_results, load_classes
+from utilis import compute_ap, filter_results, load_classes, 
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from utilis import parse_cfg,  my_collate
@@ -67,24 +67,23 @@ def eval_score(model, dataloader, cuda):
 
 
 def compute_map(num_classes, classes, all_detections, all_annotations,
-                conf_index, confidence, nms_conf, map_frame, train):
+                conf_index, confidence, iou_conf, map_frame, train):
     average_precisions = {}
     for label in range(num_classes):
         true_positives = []
         scores = []
         num_annotations = 0
-    
+
         for i in range(len(all_annotations)):
             detections = all_detections[conf_index][i][label]
             annotations = all_annotations[i][label]
-    
+
             num_annotations += annotations.shape[0]
             detected_annotations = []
-    
+
             for *bbox, score in detections:
                 scores.append(score)
-                
-    
+
                 if annotations.shape[0] == 0:
                     true_positives.append(0)
                     continue
@@ -93,36 +92,39 @@ def compute_map(num_classes, classes, all_detections, all_annotations,
 #                        np.expand_dims(bbox, axis=0), annotations)
                 overlaps = bbox_iou_numpy(
                         np.expand_dims(bbox, axis=0), annotations)
-                
+
                 assigned_annotation = np.argmax(overlaps, axis=1)
                 max_overlap = overlaps[0, assigned_annotation]
-    
-                if max_overlap >= nms_conf and assigned_annotation not in detected_annotations:
+
+                if max_overlap >= iou_conf and \
+                        assigned_annotation not in detected_annotations:
                     true_positives.append(1)
                     detected_annotations.append(assigned_annotation)
                 else:
                     true_positives.append(0)
-    
+
         # no annotations -> AP for this class is 0
         if num_annotations == 0:
             average_precisions[label] = 0
             continue
-    
+
         true_positives = np.array(true_positives)
         false_positives = np.ones_like(true_positives) - true_positives
         # sort by score
         indices = np.argsort(-np.array(scores))
         false_positives = false_positives[indices]
         true_positives = true_positives[indices]
-    
+
         # compute false positives and true positives
         false_positives = np.cumsum(false_positives)
         true_positives = np.cumsum(true_positives)
-    
+
         # compute recall and precision
         recall = true_positives / num_annotations
-        precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
-    
+        precision = true_positives / np.maximum(true_positives +
+                                                false_positives,
+                                                np.finfo(np.float64).eps)
+
         # compute average precision
         average_precision = compute_ap(recall, precision)
         average_precisions[label] = average_precision
@@ -140,8 +142,8 @@ def compute_map(num_classes, classes, all_detections, all_annotations,
         return mAP, list(average_precisions.values())
 
 
-def get_map(model, dataloader, cuda, conf_list, nms_conf, classes,
-            train=False, specific_conf=0.5, loop_conf=False):
+def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
+            train=False, specific_conf=0.5, loop_conf=False, nms_conf=0.5):
     if loop_conf:
         loop_conf = conf_list
     else:
@@ -217,7 +219,7 @@ def get_map(model, dataloader, cuda, conf_list, nms_conf, classes,
             # else: mAP, average_precisions
             results = compute_map(num_classes, classes, all_detections,
                                   all_annotations, conf_index, confidence,
-                                  nms_conf, map_frame, train)
+                                  iou_conf, map_frame, train)
             if conf_index == 0:
                 best_map = results[0]
                 best_ap = results[1]
@@ -245,7 +247,7 @@ def get_map(model, dataloader, cuda, conf_list, nms_conf, classes,
 def main():
     cuda = True
     specific_conf = 0.5
-    nms_conf = 0.5
+    iou_conf = 0.5
     cfg_path = "../4Others/color_ball.cfg"
     test_root_dir = "../1TestData"
     test_label_csv_mame = '../1TestData/label.csv'
@@ -271,7 +273,7 @@ def main():
                              num_workers=4)
     start = time.time()
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
-        map_frame = get_map(model, test_loader, cuda, conf_list, nms_conf,
+        map_frame = get_map(model, test_loader, cuda, conf_list, iou_conf,
                             classes, False, specific_conf, False)
     print(time.time() - start)
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \

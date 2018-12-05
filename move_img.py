@@ -138,5 +138,3 @@ if __name__ == '__main__':
 #                    f.write(str(item) +" ")
 #            f.write("\n")
 #IMG_20181106_160325
-   for i in  range(10, 15):
-       print(i)
