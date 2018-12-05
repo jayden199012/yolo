@@ -4,7 +4,7 @@ import torch
 import time
 import pandas as pd
 import numpy as np
-from utilis import compute_ap, filter_results, load_classes, 
+from utilis import compute_ap, filter_results, load_classes
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from utilis import parse_cfg,  my_collate
@@ -156,6 +156,8 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
     model.eval()
     num_classes = model.num_classes
     all_detections = []
+    specific_conf_map = None
+    specific_conf_ap = None
     len_conf_list = len(loop_conf)
     for _ in range(len_conf_list):
         all_detections.append([])
@@ -171,6 +173,7 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
             outputs = model(image, cuda)
 
             for conf_index, confidence in enumerate(loop_conf):
+                print(f"Running for object confidence : {confidence}")
                 for img in outputs:
                     all_detections[conf_index].append(
                         [np.array([]) for _ in range(num_classes)]
@@ -267,8 +270,8 @@ def main():
     test_data = CustData(test_label_csv_mame, test_root_dir,
                          transform=test_transform)
 
-    test_loader = DataLoader(test_data, shuffle=True,
-                             batch_size=1,
+    test_loader = DataLoader(test_data, shuffle=False,
+                             batch_size=model.net["batch"],
                              collate_fn=my_collate,
                              num_workers=4)
     start = time.time()

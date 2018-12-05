@@ -175,11 +175,11 @@ def main(classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=model.net["batch"],
                               collate_fn=my_collate,
-                              num_workers=4)
-    test_loader = DataLoader(test_data, shuffle=True,
+                              num_workers=6)
+    test_loader = DataLoader(test_data, shuffle=False,
                              batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=4)
+                             num_workers=6)
     # Create sub_working_dir
     sub_working_dir = os.path.join(config["sub_working_dir"] + date_time_now)
     if not os.path.exists(sub_working_dir):

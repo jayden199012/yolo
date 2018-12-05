@@ -1,13 +1,20 @@
+import torch
+import time
 import numpy as np
 import pandas as pd
 import glob
 import matplotlib.pyplot as plt
 import seaborn as sns
 import ssaplot
-import evaluate
+from evaluate import get_map
+from torch.utils.data import DataLoader
+from data import CustData, RandomCrop
+from torchvision import transforms
 from utilis import compute_ap, filter_results, load_classes
 from utilis import parse_cfg,  my_collate
-import yolo_v3
+from yolo_v3 import yolo_v3
+import warnings
+warnings.filterwarnings("ignore")
 pd.set_option("display.max_columns", 20)
 
 
@@ -166,18 +173,16 @@ def show():
     visual.compare_vis(visual.kdp_seperate)
     visual.compare_vis(visual.kdp_all)
 
-def get():
+def conf_map_frame(iou_conf, conf_list):
     cuda = True
-    specific_conf = 0.5
-    iou_conf = 0.5
+    specific_conf = 0.9
     cfg_path = "../4Others/color_ball.cfg"
     test_root_dir = "../1TestData"
     test_label_csv_mame = '../1TestData/label.csv'
     classes = load_classes('../4Others/color_ball.names')
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
-    conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
-    checkpoint_path = "../4TrainingWeights/2018-11-07_23_13_38.391465/2018-11-08_02_45_20.195250_model.pth"
+    checkpoint_path = "../4TrainingWeights/experiment/2018-11-29_10_55_14.092988/2018-11-29_11_13_34.749073_model.pth"
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint)
     model = model.cuda()
@@ -189,17 +194,35 @@ def get():
     test_data = CustData(test_label_csv_mame, test_root_dir,
                          transform=test_transform)
 
-    test_loader = DataLoader(test_data, shuffle=True,
-                             batch_size=1,
+    test_loader = DataLoader(test_data, shuffle=False,
+                             batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=4)
-    start = time.time()
+                             num_workers=6)
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
         map_frame = get_map(model, test_loader, cuda, conf_list, iou_conf,
-                            classes, False, specific_conf, False)
-    print(time.time() - start)
+                            classes, False, specific_conf, True)
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame
 
 
-    
+def con_iou_map_frame():
+    start = time.time()
+    compare_path = "../5Compare/"
+    csv_name = "con_iou_map_frame.csv"
+    conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
+    iou_conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
+    con_iou_map_frame = pd.DataFrame(index=iou_conf_list, columns=conf_list)
+    for iou_conf in iou_conf_list:
+        print(f"Running for IoU : {iou_conf}")
+        outputs = conf_map_frame(iou_conf, conf_list)
+        map_frame = outputs[-1]
+        con_iou_map_frame.loc[iou_conf, :] = map_frame.iloc[4, :]
+    con_iou_map_frame.to_csv(compare_path + csv_name, index=True)
+    time_taken = time.time()-start
+    print(f"This experiment took {time_taken//(60*60)} hours : \
+                                  {time_taken//60} minutes : \
+                                  {time_taken%60} seconds!")
+
+
+if __name__ == '__main__':
+       con_iou_map_frame()
