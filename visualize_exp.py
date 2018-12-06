@@ -67,6 +67,8 @@ class results():
             color = self.color(df, i)
             sns.kdeplot(data, label=name, color=color, shade=True)
             plt.legend(loc='upper right')
+        plt.xlabel("Object Confidence", fontsize=20)
+        plt.ylabel("Knernel Density", fontsize=20)
 
     def kdp_seperate(self, df, col=1):
         fig = plt.figure(figsize=self.figsize)
@@ -103,6 +105,8 @@ class results():
             ax = fig.add_subplot(rows, col, i+1)
             ax.plot(data, color=color)
             ax.set_title(name)
+            ax.set_xlabel("Object Confidence", fontsize=20)
+            ax.set_ylabel("mAP", fontsize=20)
 
 #        fig, ax = subplots(rows, col, figsize=self.figsize)
 #        ax.set_xlabel('Xlabel')
@@ -120,6 +124,8 @@ class results():
         if sort:
             map_max = map_max.sort_values(ascending=False)
         self.bar(map_max)
+        plt.xlabel("Number of Images", fontsize=20)
+        plt.ylabel("mAP", fontsize=20)
 
     def bar(self, df):
         ax = sns.barplot(x=df.index, y=df.values, palette=sns.color_palette(
@@ -161,6 +167,8 @@ class results():
         ax = sns.barplot(x=x, y=y, palette=sns.color_palette("Paired", 4),
                          saturation=0.85)
         ssaplot.annotate(ax, message='Float', fontsize=30)
+        plt.xlabel("Number of Images", fontsize=20)
+        plt.ylabel("mAP Improvement in %", fontsize=20)
         plt.suptitle("mAP Improvement", fontsize=self.title_size)
         plt.show()
 
@@ -188,8 +196,11 @@ def show():
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement()
+    visual.figsize = (8, 5)
+    visual.compare_vis(visual.best_map)
     visual.compare_vis(visual.line_all)
     visual.compare_map(visual.line_all)
+    visual.compare_map(visual.best_map)
     visual.compare_vis(visual.kdp_seperate)
     visual.compare_vis(visual.kdp_all)
     visual.heat_map()
@@ -254,5 +265,3 @@ if __name__ == '__main__':
         compare_path = "../5Compare/"
         csv_name = "con_iou_map_frame.csv"
         con_iou_map_frame(compare_path, csv_name)
-data = pd.read_csv(compare_path + csv_name, index_col=0)
-data2 = data.round(3)

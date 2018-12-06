@@ -7,6 +7,7 @@ import pandas as pd
 import pickle
 import shutil
 import os
+import time
 
 
 def move_not_zero(labels_df, label_name):
@@ -70,10 +71,11 @@ def compare():
         results[file_name]["best_map"] = []
         results[file_name]["best_conf"] = []
         results[file_name]["specific_conf_map"] = []
-        for index, seed in enumerate(range(2, 10)):
+        for index, seed in enumerate(range(420, 430)):
             random.seed(seed)
             if not os.path.exists(to_path):
                 os.makedirs(to_path)
+            sub_name = f"{file_name}_seed_{seed}_"
             name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
             # Original label names
             label_csv_mame = '../color_balls/label.csv'
@@ -91,7 +93,7 @@ def compare():
             best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
                 map_frame = main(classes, conf_list, sub_sample_csv_name,
                                  sub_sample_txt_path, to_path, cuda=True,
-                                 specific_conf=0.5)
+                                 specific_conf=0.5, sub_name=sub_name)
             results[file_name]["best_map"].append(best_map)
             results[file_name]["best_conf"].append(best_conf)
             results[file_name]["specific_conf_map"].append(specific_conf_map)
@@ -107,7 +109,13 @@ def compare():
 
 
 if __name__ == '__main__':
+    start = time.time()
     compare()
+    time_taken = time.time()-start
+    print(f"This experiment took {time_taken//(60*60)} hours : \
+                                  {time_taken//60} minutes : \
+                                  {time_taken%60} seconds!")
+
 
 #with open(results_save_name, 'rb') as fp:
 #    b = pickle.load(fp)
@@ -138,3 +146,4 @@ if __name__ == '__main__':
 #                    f.write(str(item) +" ")
 #            f.write("\n")
 #IMG_20181106_160325
+
