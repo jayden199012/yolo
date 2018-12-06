@@ -6,6 +6,7 @@ import datetime
 import os
 import torch
 import logging
+import random
 from torch import optim
 from torchvision import transforms
 from torch.utils.data import DataLoader
@@ -130,12 +131,21 @@ def _save_checkpoint(state_dict, config, evaluate_func=None):
     logging.info("Model checkpoint saved to %s" % checkpoint_path)
 
 
+def worker_init_fn(worker_id):
+    np.random.seed(worker_id)
+
+
 def main(classes, conf_list, label_csv_mame, img_txt_path, root_dir,
          cuda=True, specific_conf=0.5, iou_conf=0.5):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     logging.basicConfig(level=logging.DEBUG,
                         format="[%(asctime)s %(filename)s] %(message)s")
+    seed = 1
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
     cfg_path = "../4Others/color_ball.cfg"
     test_root_dir = "../1TestData"
     name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
@@ -175,11 +185,11 @@ def main(classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=model.net["batch"],
                               collate_fn=my_collate,
-                              num_workers=6)
+                              num_workers=6, worker_init_fn=worker_init_fn)
     test_loader = DataLoader(test_data, shuffle=False,
                              batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=6)
+                             num_workers=6, worker_init_fn=worker_init_fn)
     # Create sub_working_dir
     sub_working_dir = os.path.join(config["sub_working_dir"] + date_time_now)
     if not os.path.exists(sub_working_dir):

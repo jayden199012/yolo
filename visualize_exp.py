@@ -178,6 +178,7 @@ class results():
         ax1.invert_yaxis()
         axes[0].set_xlabel("object Confidence", fontsize=20)
         axes[0].set_ylabel("IoU Threshhold", fontsize=20)
+        axes[1].set_xlabel("Mean Average Precision (mAP) values", fontsize=15)
 
 
 def show():
