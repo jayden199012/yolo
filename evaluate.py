@@ -37,14 +37,14 @@ def bbox_iou_numpy(box1, box2):
     iw = np.maximum(iw, 0)
     ih = np.maximum(ih, 0)
 
-    ua = np.expand_dims((box1[:, 2] - box1[:, 0]) * (box1[:, 3] - box1[:, 1]), axis=1) + area - iw * ih
+    ua = np.expand_dims((box1[:, 2] - box1[:, 0]) * (box1[:, 3] - box1[:, 1]),
+                        axis=1) + area - iw * ih
 
     ua = np.maximum(ua, np.finfo(float).eps)
 
     intersection = iw * ih
 
     return intersection / ua
-
 
 
 def eval_score(model, dataloader, cuda):
@@ -173,7 +173,7 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
             outputs = model(image, cuda)
 
             for conf_index, confidence in enumerate(loop_conf):
-                print(f"Running for object confidence : {confidence}")
+                # gets output at each object confidence
                 for img in outputs:
                     all_detections[conf_index].append(
                         [np.array([]) for _ in range(num_classes)]
@@ -218,6 +218,7 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
                     for label in range(num_classes):
                         all_annotations[-1][label] = annotation_boxes[annotation_labels == label, :]
         for conf_index, confidence in enumerate(loop_conf):
+            print(f"Running for object confidence : {confidence}")
             # if train it results consists mAP, average_precisions map_frame
             # else: mAP, average_precisions
             results = compute_map(num_classes, classes, all_detections,

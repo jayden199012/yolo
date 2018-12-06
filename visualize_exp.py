@@ -19,9 +19,10 @@ pd.set_option("display.max_columns", 20)
 
 
 class results():
-    def __init__(self, results_path, test_name_list, figsize=(15, 8),
+    def __init__(self, results_path, test_name_list, csv_name, figsize=(20, 8),
                  title_size=20, hspace=0.6, wspace=0.4):
         self.results_path = results_path
+        self.csv_name = csv_name
         self.test_name_list = test_name_list
         self.all_df = self.get_avg_df()
         self.map = self.get_map_df()
@@ -146,7 +147,9 @@ class results():
 
     def map_improvement(self):
         plt.figure(figsize=self.figsize)
+        # finding the max mAP for all tests
         map_max = self.map.max(axis=1)
+        # number of mAP categaries
         len_map = len(map_max.values)
         y = []
         x = []
@@ -161,17 +164,37 @@ class results():
         plt.suptitle("mAP Improvement", fontsize=self.title_size)
         plt.show()
 
+    def heat_map(self, annotation=False):
+        if not annotation:
+            linewidths = 0
+        else:
+            linewidths = .3
+        data = pd.read_csv(self.results_path + self.csv_name, index_col=0)
+        grid_kws = {"height_ratios": (.9, .05), "hspace": .3}
+        fig, axes = plt.subplots(2, figsize=self.figsize, gridspec_kw=grid_kws)
+        ax1 = sns.heatmap(data.round(3), ax=axes[0], cbar_ax=axes[1],
+                          cbar_kws={"orientation": "horizontal"},
+                          linewidths=linewidths, annot=annotation)
+        ax1.invert_yaxis()
+        axes[0].set_xlabel("object Confidence", fontsize=20)
+        axes[0].set_ylabel("IoU Threshhold", fontsize=20)
+
 
 def show():
     results_path = "../5Compare/"
+    csv_name = "con_iou_map_frame.csv"
     test_name_list = ["250_to_300", "400_to_450", "550_to_600"]
-    visual = results(results_path, test_name_list)
+    visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement()
     visual.compare_vis(visual.line_all)
     visual.compare_map(visual.line_all)
     visual.compare_vis(visual.kdp_seperate)
     visual.compare_vis(visual.kdp_all)
+    visual.heat_map()
+    visual.heat_map(annotation=True)
+#    con_iou_map_frame(results_path, csv_name)
+
 
 def conf_map_frame(iou_conf, conf_list):
     cuda = True
@@ -182,7 +205,7 @@ def conf_map_frame(iou_conf, conf_list):
     classes = load_classes('../4Others/color_ball.names')
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
-    checkpoint_path = "../4TrainingWeights/experiment/2018-11-29_10_55_14.092988/2018-11-29_11_13_34.749073_model.pth"
+    checkpoint_path = "../4TrainingWeights/experiment/2018-11-30_05_19_48.404150/2018-11-30_05_59_33.719706_model.pth"
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint)
     model = model.cuda()
@@ -205,18 +228,20 @@ def conf_map_frame(iou_conf, conf_list):
         map_frame
 
 
-def con_iou_map_frame():
+def con_iou_map_frame(compare_path, csv_name):
     start = time.time()
-    compare_path = "../5Compare/"
-    csv_name = "con_iou_map_frame.csv"
-    conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
-    iou_conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
+    # object confidence level
+    conf_list = np.arange(start=0.2, stop=0.95, step=0.025)
+    # IoU confidence level for the model determine a True positive
+    iou_conf_list = np.arange(start=0.2, stop=0.95, step=0.025)
     con_iou_map_frame = pd.DataFrame(index=iou_conf_list, columns=conf_list)
     for iou_conf in iou_conf_list:
         print(f"Running for IoU : {iou_conf}")
         outputs = conf_map_frame(iou_conf, conf_list)
         map_frame = outputs[-1]
         con_iou_map_frame.loc[iou_conf, :] = map_frame.iloc[4, :]
+    con_iou_map_frame.index = np.round(con_iou_map_frame.index, 3)
+    con_iou_map_frame.columns = np.round(con_iou_map_frame.columns, 3)
     con_iou_map_frame.to_csv(compare_path + csv_name, index=True)
     time_taken = time.time()-start
     print(f"This experiment took {time_taken//(60*60)} hours : \
@@ -225,4 +250,8 @@ def con_iou_map_frame():
 
 
 if __name__ == '__main__':
-       con_iou_map_frame()
+        compare_path = "../5Compare/"
+        csv_name = "con_iou_map_frame.csv"
+        con_iou_map_frame(compare_path, csv_name)
+data = pd.read_csv(compare_path + csv_name, index_col=0)
+data2 = data.round(3)
