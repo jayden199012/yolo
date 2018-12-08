@@ -7,6 +7,7 @@ import cv2
 import glob
 import pandas as pd
 import shutil
+from PIL import Image
 from statistics import mode
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -470,11 +471,12 @@ def draw_boxes(image, boxes):
         x, y, w, h = (box[1] - box[3]/2), (box[2] - box[4]/2), box[3], box[4]
         xmin, ymin, xmax, ymax = x, y, x+w, y+h
         p = Polygon(((xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)),
-            fc=(colors[i][0], colors[i][1], colors[i][2], 0.35), 
-            ec=(colors[i][0], colors[i][1], colors[i][2], 0.95), lw=3)
+                    fc=(colors[i][0], colors[i][1], colors[i][2], 0.35),
+                    ec=(colors[i][0], colors[i][1], colors[i][2], 0.95), lw=3)
         ax.add_patch(p)
         ax.axis('off')
     ax.imshow(image)
+
 
 def write(x, results, classes):
     c1 = tuple(x[1:3].int())
@@ -484,11 +486,12 @@ def write(x, results, classes):
 #    color = random.choice(colors)
     color = 2
     label = "{0}".format(classes[cls])
-    cv2.rectangle(img, c1, c2,color, 1)
-    t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
+    cv2.rectangle(img, c1, c2, color, 1)
+    t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]
     c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
     cv2.rectangle(img, c1, c2, color, -1)
-    cv2.putText(img, label, (c1[0], c1[1] + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 1, [225,255,255], 1);
+    cv2.putText(img, label, (c1[0], c1[1] + t_size[1] + 4),
+                cv2.FONT_HERSHEY_PLAIN, 1, [225, 255, 255], 1)
     return img
 
 
@@ -555,4 +558,18 @@ def move_images(label_name, to_path, action_fn, action="copy", **kwargs):
             shutil.copy(images[:-3] + 'txt', to_path)
 
 
-
+def resize_all_img(new_w, new_h, from_path, to_path):
+    '''
+    This function resize images into new sizes and make a copy of them to a
+    new path
+    '''
+    images = glob.glob(from_path)
+    for img in images:
+        image = Image.open(img)
+        resized_image = image.resize((new_w, new_h), Image.ANTIALIAS)
+        img_name = img.split('\\')[-1]
+        save_path = to_path + img_name
+        if not os.path.isfile(save_path):
+            resized_image.save(save_path)
+        else:
+            raise NameError(f"{save_path} already exists")

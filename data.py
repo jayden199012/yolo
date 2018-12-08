@@ -100,3 +100,6 @@ class RandomCrop:
 #        labels = labels[~(labels == 0).all(1)]
         image = Image.fromarray(pix.astype('uint8'))
         return image, labels
+
+
+

@@ -8,14 +8,12 @@ import seaborn as sns
 import ssaplot
 from evaluate import get_map
 from torch.utils.data import DataLoader
-from data import CustData, RandomCrop
+from data import CustData
 from torchvision import transforms
-from utilis import compute_ap, filter_results, load_classes
-from utilis import parse_cfg,  my_collate
+from utilis import parse_cfg,  my_collate, load_classes
 from yolo_v3 import yolo_v3
 import warnings
 warnings.filterwarnings("ignore")
-pd.set_option("display.max_columns", 20)
 
 
 class results():

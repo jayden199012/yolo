@@ -11,6 +11,7 @@ import os
 import time
 import torch
 import logging
+import datetime
 
 
 def move_not_zero(labels_df, label_name):
@@ -53,9 +54,10 @@ def split_train(label_name, train_size, random_state=0):
 
 
 # label_name = '../1TestData/label.csv'
-
 def compare():
-    compare_path = "../5Compare/img_size/"
+    date_time_now = str(
+        datetime.datetime.now()).replace(" ", "_").replace(":", "_")
+    compare_path = f"../5Compare/img_size/{date_time_now}/"
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
     config_name = "exp_config.p"
@@ -73,7 +75,7 @@ def compare():
     model.net['img_sampling_info'] = to_path_list
     with open(compare_path + config_name, "wb") as fp:
         pickle.dump(model.net, fp, protocol=pickle.HIGHEST_PROTOCOL)
-    time_taken = pd.DataFrame(columns=list(seed_range))
+    time_taken_df = pd.DataFrame(columns=list(seed_range))
     for to_path, train_size in to_path_list.items():
         file_name = to_path.strip(".").strip("/")
         for index, seed in enumerate(seed_range):
@@ -84,8 +86,8 @@ def compare():
             sub_name = f"{file_name}_seed_{seed}_"
             name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
             # Original label names
-            label_csv_mame = '../color_balls/label.csv'
-            img_txt_path = "../color_balls/*.txt"
+            label_csv_mame = '../color_balls_1024/label.csv'
+            img_txt_path = "../color_balls_1024/*.txt"
             prep_labels(img_txt_path, name_list, label_csv_mame)
             # sub sampled label names
             sub_sample_csv_name = to_path + "label.csv"
@@ -109,8 +111,8 @@ def compare():
             map_frame.to_csv(compare_path + file_name + str(index) + ".csv",
                              index=True)
             shutil.rmtree(to_path)
-            time_taken.loc[file_name, seed] = time.tine - x_start
-            time_taken.to_csv(compare_path + 'time_taken.csv', index=True)
+            time_taken_df.loc[file_name, seed] = time.time() - x_start
+            time_taken_df.to_csv(compare_path + 'time_taken.csv', index=True)
 
 
 if __name__ == '__main__':
@@ -125,7 +127,7 @@ if __name__ == '__main__':
     compare()
     time_taken = time.time()-start
     print(f"This experiment took {time_taken//(60*60)} hours : \
-                                  {time_taken//60} minutes : \
+                                  {time_taken%60} minutes : \
                                   {time_taken%60} seconds!")
 
 
