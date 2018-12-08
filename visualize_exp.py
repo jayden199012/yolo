@@ -196,7 +196,7 @@ def show():
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement()
-    visual.figsize = (8, 5)
+    visual.figsize = (12, 4)
     visual.compare_vis(visual.best_map)
     visual.compare_vis(visual.line_all)
     visual.compare_map(visual.line_all)
