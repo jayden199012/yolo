@@ -68,7 +68,7 @@ def parse_cfg(cfgfile):
         int_rows = ["batch", "max_batches", "height", "width", "channels",
                     "epochs", "burn_in", "max_batches"]
         float_rows = ["momentum", "decay", "saturation", "exposure", "hue",
-                      "learning_rate"]
+                      "learning_rate", "rand_crop"]
         for rows in int_rows:
             blocks[0][rows] = int(blocks[0][rows])
         for rows in float_rows:

@@ -135,33 +135,24 @@ def worker_init_fn(worker_id):
     np.random.seed(worker_id)
 
 
-def main(classes, conf_list, label_csv_mame, img_txt_path, root_dir,
-         cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name=None):
+def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
+         cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name='_'):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    logging.basicConfig(level=logging.DEBUG,
-                        format="[%(asctime)s %(filename)s] %(message)s")
-    seed = 1
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    cfg_path = "../4Others/color_ball.cfg"
+    config = model.net
     test_root_dir = "../1TestData"
+    # label csv column names
     name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
     prep_labels(img_txt_path, name_list, label_csv_mame)
     test_label_csv_mame = '../1TestData/label.csv'
     test_img_txt_path = "../1TestData/*.txt"
     prep_labels(test_img_txt_path, name_list, test_label_csv_mame)
-    blocks = parse_cfg(cfg_path)
-    model = yolo_v3(blocks)
-    model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
-    config = model.net
     optimizer = optim.SGD(model.module_list.parameters(),
                           lr=config["learning_rate"],
                           momentum=config["momentum"],
                           weight_decay=config["decay"])
-    pre_trans = RandomCrop(inp_dim=model.net["height"])
+    pre_trans = RandomCrop(jitter=config['rand_crop'],
+                           inp_dim=model.net["height"])
     train_transform = transforms.Compose(
             [transforms.ColorJitter(
                                     brightness=model.net["exposure"],
@@ -218,10 +209,22 @@ def main(classes, conf_list, label_csv_mame, img_txt_path, root_dir,
 
 
 if __name__ == "__main__":
+    seed = 1
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    logging.basicConfig(level=logging.DEBUG,
+                        format="[%(asctime)s %(filename)s] %(message)s")
     label_csv_mame = '../1TrainData/label.csv'
     img_txt_path = "../1TrainData/*.txt"
     root_dir = "../1TrainData"
     classes = load_classes('../4Others/color_ball.names')
     conf_list = np.arange(start=0.2, stop=0.95, step=0.025)
-    main(classes, conf_list, label_csv_mame=label_csv_mame,
+    cfg_path = "../4Others/color_ball.cfg"
+    blocks = parse_cfg(cfg_path)
+    model = yolo_v3(blocks)
+    model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
+    main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
+
