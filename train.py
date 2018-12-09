@@ -136,7 +136,7 @@ def worker_init_fn(worker_id):
 
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
-         cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name='_'):
+         cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name=''):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     config = model.net
@@ -182,11 +182,11 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
                              collate_fn=my_collate,
                              num_workers=6, worker_init_fn=worker_init_fn)
     # create working if necessary
-    if not os.path.exists(config["sub_working_dir"]):
-        os.makedirs(config["sub_working_dir"])
+    if not os.path.exists(config["working_dir"]):
+        os.makedirs(config["working_dir"])
 
     # Create sub_working_dir
-    sub_working_dir = os.path.join(config["sub_working_dir"] + sub_name +
+    sub_working_dir = os.path.join(config["working_dir"] + sub_name +
                                    date_time_now)
     if not os.path.exists(sub_working_dir):
         os.makedirs(sub_working_dir)

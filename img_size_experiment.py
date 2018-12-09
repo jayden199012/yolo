@@ -79,6 +79,8 @@ def compare():
     for to_path, train_size in to_path_list.items():
         file_name = to_path.strip(".").strip("/")
         for index, seed in enumerate(seed_range):
+            model.load_weights("../4Weights/yolov3.weights",
+                               cust_train_zero=True)
             x_start = time.time()
             random.seed(seed)
             if not os.path.exists(to_path):
@@ -108,7 +110,7 @@ def compare():
                                  specific_conf=0.5,
                                  sub_name=sub_name)
 
-            map_frame.to_csv(compare_path + file_name + str(index) + ".csv",
+            map_frame.to_csv(f"{compare_path+sub_name}.csv",
                              index=True)
             shutil.rmtree(to_path)
             time_taken_df.loc[file_name, seed] = time.time() - x_start
