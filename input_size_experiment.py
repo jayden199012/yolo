@@ -6,7 +6,6 @@ import random
 import numpy as np
 import pandas as pd
 import pickle
-import shutil
 import os
 import time
 import torch
@@ -63,16 +62,16 @@ def compare():
     config_name = "exp_config.p"
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
     seed_range = range(424, 428)
-    input_sizes = [608, 512, 416, 320]
+    input_sizes = [320, 416, 512, 608]
     classes = load_classes('../4Others/color_ball.names')
     cfg_path = "../4Others/color_ball.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
     model.net['seed_range'] = seed_range
-    label_csv_mame = '../1TrainData/label.csv'
-    img_txt_path = "../1TrainData/*.txt"
-    root_dir = "../1TrainData"
+    label_csv_mame = '../color_balls/label.csv'
+    img_txt_path = "../color_balls/*.txt"
+    root_dir = "../color_balls"
     model.net['width'] = input_sizes
     model.net['height'] = input_sizes
     with open(compare_path + config_name, "wb") as fp:
@@ -124,8 +123,11 @@ if __name__ == '__main__':
                                   {time_taken%60} seconds!")
 
 
-#with open(compare_path + config_name, 'rb') as fp:
+#with open("../5Compare/input_size/2018-12-09_00_25_41.640054/exp_config.p", 'rb') as fp:
 #    b = pickle.load(fp)
+
+#with open("../5Compare/img_size/2018-12-08_21_45_38.145340/exp_config.p", 'rb') as fp:
+#    b2 = pickle.load(fp)
 
 
 # code thhat used to recover data

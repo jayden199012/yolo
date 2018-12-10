@@ -28,6 +28,12 @@ class results():
         self.title_size = title_size
         self.hspace = hspace
         self.wspace = wspace
+        self.time_mean = self.get_time_mean()
+
+    def get_time_mean(self):
+        df = pd.read_csv(f"{self.results_path}time_taken.csv", index_col=0)
+        time_mean = df.mean(axis=1)
+        return time_mean
 
     def get_avg_df(self):
         df = {}
@@ -112,32 +118,34 @@ class results():
 #        ax.set_xlim(0,1)
 #
 
-    def best_map(self, df, sort=True, only_map=True):
+    def best_map(self, df, sort=True, only_map=True, fontsize=30):
         plt.figure(figsize=self.figsize)
         if only_map:
             map_max = df.max(axis=1)
+        # when its false, first find out the confidence where its map is the
+        # highest, then find the corresponding ap for each class
         else:
             best_conf = df.iloc[4, :].idxmax(axis=1)
             map_max = df[best_conf]
         if sort:
             map_max = map_max.sort_values(ascending=False)
-        self.bar(map_max)
-        plt.xlabel("Number of Images", fontsize=20)
+        self.bar(map_max, fontsize)
+#        plt.xlabel("Number of Images", fontsize=20)
         plt.ylabel("mAP", fontsize=20)
 
-    def bar(self, df):
+    def bar(self, df, fontsize):
         ax = sns.barplot(x=df.index, y=df.values, palette=sns.color_palette(
                 "RdYlBu", 12), saturation=0.85)
-        ssaplot.annotate(ax, message='Float', fontsize=30)
+        ssaplot.annotate(ax, message='Float', fontsize=fontsize)
 
-    def compare_vis(self, func):
+    def compare_vis(self, func, **kwargs):
         for index, value in self.all_df.items():
-            func(value)
+            func(value, **kwargs)
             plt.suptitle(index, fontsize=self.title_size)
             plt.show()
 
-    def compare_map(self, func):
-            func(self.map)
+    def compare_map(self, func, **kwargs):
+            func(self.map, **kwargs)
             plt.suptitle("mAP Comparism", fontsize=self.title_size)
             plt.show()
 
@@ -146,7 +154,7 @@ class results():
         try:
             color = df.iloc[i, :].name.split('_')[0].replace('mAP', 'black')
         except:
-            color = None
+            color = np.random.randint(0, 255)
         return color
 
     def map_improvement(self):
@@ -165,9 +173,9 @@ class results():
         ax = sns.barplot(x=x, y=y, palette=sns.color_palette("Paired", 4),
                          saturation=0.85)
         ssaplot.annotate(ax, message='Float', fontsize=30)
-        plt.xlabel("Number of Images", fontsize=20)
-        plt.ylabel("mAP Improvement in %", fontsize=20)
-        plt.suptitle("mAP Improvement", fontsize=self.title_size)
+#        plt.xlabel("Number of Images", fontsize=20)
+        plt.ylabel("mAP percentage change (%)", fontsize=20)
+        plt.suptitle("mAP percentage change", fontsize=self.title_size)
         plt.show()
 
     def heat_map(self, annotation=False):
@@ -186,23 +194,62 @@ class results():
         axes[0].set_ylabel("IoU Threshhold", fontsize=20)
         axes[1].set_xlabel("Mean Average Precision (mAP) values", fontsize=15)
 
+    def get_time(self, label_fontsize=20, units='seconds'):
+        plt.figure(figsize=self.figsize)
+        if units == 'seconds':
+            ime_mean = round(self.time_mean, 2)
+        elif units == 'minutes':
+            time_mean = round(self.time_mean / 60, 2)
+        elif units == 'hours':
+            time_mean = round(self.time_mean/ 360, 2)
+        else:
+            raise NameError(f"Effective units are 'seconds', 'minutes' and \
+                            'hours'")
+        self.bar(time_mean, label_fontsize)
+        plt.ylabel(f"Average Training Time Taken in ({units})", fontsize=20)
+
+    def time_increase(self):
+        plt.figure(figsize=self.figsize)
+        x = []
+        y = []
+        for i in range(1, len(self.time_mean)):
+            percentage_change = np.log(
+                    self.time_mean.values[i]/self.time_mean.values[i-1]
+                                ) * 100
+            index = f"From input size : {self.time_mean.index[i-1]} " +\
+                    f"to {self.time_mean.index[i]}"
+            y.append(percentage_change)
+            x.append(index)
+        ax = sns.barplot(x=x, y=y, palette=sns.color_palette("Paired", 4),
+                         saturation=0.85)
+        ssaplot.annotate(ax, message='Float', fontsize=30)
+#        plt.xlabel("Number of Images", fontsize=20)
+        plt.ylabel("Training time percentage change", fontsize=20)
+        plt.suptitle("Training time percentage change",
+                     fontsize=self.title_size)
+        plt.show()
+
 
 def show():
-    results_path = "../5Compare/"
+    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
+#    results_path = "../5Compare/input_size/2018-12-09_00_25_41.640054/"
     csv_name = "con_iou_map_frame.csv"
-    test_name_list = ["250_to_300", "400_to_450", "550_to_600",
+    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
                       "700_to_750_imgs"]
+#    test_name_list = ['608', '512', '416', '320']
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement()
-    visual.figsize = (12, 4)
-    visual.compare_vis(visual.best_map)
+    visual.figsize = (14, 8)
+    visual.compare_vis(visual.best_map, only_map=False)
     visual.compare_vis(visual.line_all)
     visual.compare_map(visual.line_all)
     visual.compare_map(visual.best_map)
     visual.compare_vis(visual.kdp_seperate)
     visual.compare_vis(visual.kdp_all)
     visual.heat_map()
+    visual.get_time(label_fontsize=25, units='minutes')
+    visual.time_increase()
     visual.heat_map(annotation=True)
 #    con_iou_map_frame(results_path, csv_name)
 

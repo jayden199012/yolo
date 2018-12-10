@@ -114,6 +114,8 @@ def compare():
                              index=True)
             shutil.rmtree(to_path)
             time_taken_df.loc[file_name, seed] = time.time() - x_start
+            # if you change the csv_name, pls change accordingly in the 
+            # visualization part
             time_taken_df.to_csv(compare_path + 'time_taken.csv', index=True)
 
 

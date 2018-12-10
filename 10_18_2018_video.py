@@ -34,7 +34,8 @@ model = yolo_v3(blocks)
 classes = load_classes('../4Others/color_ball.names')
 #model.load_weights("../4Weights/yolov3.weights")
 #checkpoint_path = "../4TrainingWeights/2018-11-07_02_53_39.276476/2018-11-07_04_46_47.912754_model.pth"
-checkpoint_path = "../4TrainingWeights/2018-11-07_23_13_38.391465/2018-11-08_02_45_20.195250_model.pth"
+#checkpoint_path = "../4TrainingWeights/2018-11-07_23_13_38.391465/2018-11-08_02_45_20.195250_model.pth"
+checkpoint_path = "../4TrainingWeights/input_size_experiment/416_seed_425_2018-12-09_02_27_00.453122/2018-12-09_02_37_45.648345_model.pth"
 #checkpoint_path = "../4TrainingWeights/2018-11-07_23_13_38.391465/2018-11-08_03_43_34.979783_model.pth"
 
 checkpoint = torch.load(checkpoint_path)
