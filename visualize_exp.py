@@ -190,7 +190,8 @@ class results():
 def show():
     results_path = "../5Compare/"
     csv_name = "con_iou_map_frame.csv"
-    test_name_list = ["250_to_300", "400_to_450", "550_to_600"]
+    test_name_list = ["250_to_300", "400_to_450", "550_to_600",
+                      "700_to_750_imgs"]
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement()
