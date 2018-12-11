@@ -202,7 +202,7 @@ class results():
         self.bar(time_mean, label_fontsize)
         plt.ylabel(f"Average Training Time Taken in ({units})", fontsize=20)
 
-    def time_increase(self):
+    def time_increase(self, description=''):
         plt.figure(figsize=self.figsize)
         x = []
         y = []
@@ -210,7 +210,7 @@ class results():
             percentage_change = np.log(
                     self.time_mean.values[i]/self.time_mean.values[i-1]
                                 ) * 100
-            index = f"From input size : {self.time_mean.index[i-1]} " +\
+            index = f"From {self.time_mean.index[i-1]} " +\
                     f"to {self.time_mean.index[i]}"
             y.append(percentage_change)
             x.append(index)
@@ -218,37 +218,42 @@ class results():
                          saturation=0.85)
         ssaplot.annotate(ax, message='Float', fontsize=30)
 #        plt.xlabel("Number of Images", fontsize=20)
+        if description != '':
+            plt.xlabel(description, fontsize=20)
         plt.ylabel("Training time percentage change", fontsize=20)
         plt.suptitle("Training time percentage change",
                      fontsize=self.title_size)
         plt.show()
 
 
-
 def show():
     csv_name = "con_iou_map_frame.csv"
     # img sample size experiment
-    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
-    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
-                      "700_to_750_imgs"]
-    
-    # input size experiment 
+#    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
+#    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
+#                      "700_to_750_imgs"]
+
+    # input size experiment
 #    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
 #    test_name_list = ['320', '416', '512', '608']
-    
+
+    # input size experiment
+    results_path = "../5Compare/batch_size/2018-12-11_02_12_06.717949/"
+    test_name_list = ['5', '10', '15', '20']
+
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
-    visual.map_improvement()
-    visual.figsize = (8, 8)
+    visual.map_improvement(x_label='Batch Size')
+    visual.figsize = (18, 8)
     visual.compare_vis(visual.best_map, only_map=False)
     visual.compare_vis(visual.line_all)
-    visual.compare_map(visual.line_all, description='input_size=')
-    visual.compare_map(visual.best_map, sort=False)
+    visual.compare_map(visual.line_all, description='Batch Size=')
+    visual.compare_map(visual.best_map, sort=False, x_label='Batch Size')
     visual.compare_vis(visual.kdp_seperate)
     visual.compare_vis(visual.kdp_all)
     visual.heat_map()
     visual.get_time(label_fontsize=25, units='minutes')
-    visual.time_increase()
+    visual.time_increase(description='Image Input Size')
     visual.heat_map(annotation=True)
 #    con_iou_map_frame(results_path, csv_name)
 

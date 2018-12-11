@@ -80,29 +80,41 @@ if __name__ == '__main__':
                                   {time_taken%60} minutes : \
                                   {time_taken%60} seconds!")
 
-#
-#class compare():
-#    def __init__(self, func,
-#                 compare_dir="../5Compare/input_size/",
-#                 really=2, **kwargs):
-#        self.cool = cool
-#        self.really = really
-#        self.func = func
-#        self.__dict__.update(kwargs)
-#
-#    def run(self):
-#        arg_name = inspect.getfullargspec(my_func).args
-#        args = [self.__dict__[name] for name in arg_name]
-#        self.func(*args)
-#
+
+
+import inspect
+
+class compare():
+    def __init__(self, func1,
+                 var1="../5Compare/input_size/",
+                 var2="exp_config.p", **kwargs):
+        self.var1 = var1
+        self.var2 = var2
+        self.func1 = func1
+        self.__dict__.update(kwargs)
+
+    def run(self):
+        arg_name = inspect.getfullargspec(self.func1).args
+        args = [self.__dict__[name] for name in arg_name]
+        self.func1(*args)
+
+
+def my_func(var3, var4):
+    for i in var3:
+        print(i+var4)
+
+
+var3 = [1, 3, 4]
+var4 = 5
+my_com = compare(func1=my_func, var3=var3, var4=var4)
+my_com.run()
+
 #
 #for arg in arguments:
 #    print(arg)      
 #import inspect
 #
-#def my_func(lol, man):
-#    for i in lol:
-#        print(i+man)
+
 #
 #cool = [[1, 3, 4], 16]
 #cool.value

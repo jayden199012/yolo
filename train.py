@@ -228,3 +228,5 @@ if __name__ == "__main__":
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
 
+#torch.cuda.max_memory_allocated()
+#torch.cuda.max_memory_cached()

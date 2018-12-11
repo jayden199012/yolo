@@ -32,12 +32,16 @@ def compare():
     label_csv_mame = '../color_balls/label.csv'
     img_txt_path = "../color_balls/*.txt"
     root_dir = "../color_balls"
+    # save the list of input sizes into the conf dictionary
     model.net['width'] = input_sizes
     model.net['height'] = input_sizes
+
+    # save the dictionary into local pickle file
     with open(compare_path + config_name, "wb") as fp:
         pickle.dump(model.net, fp, protocol=pickle.HIGHEST_PROTOCOL)
     time_taken_df = pd.DataFrame(columns=list(seed_range))
     for input_size in input_sizes:
+        # now parse the size into the model
         model.net['width'] = input_size
         model.net['height'] = input_size
         for index, seed in enumerate(seed_range):
