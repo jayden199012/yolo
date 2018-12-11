@@ -60,7 +60,7 @@ class results():
             map_df.iloc[index, :] = value.iloc[4, :].values
         return map_df
 
-    def kdp_all(self, df, seperate=False):
+    def kdp_all(self, df, description=''):
         plt.figure(figsize=self.figsize)
         plt.xlim(0, 1)
         plt.xlabel("mAP", fontsize=20)
@@ -68,8 +68,7 @@ class results():
         for i in range(len(df)):
             data = df.iloc[i, :]
             name = df.iloc[i, :].name
-            color = self.color(df, i)
-            sns.kdeplot(data, label=name, color=color, shade=True)
+            sns.kdeplot(data, label=description+name, shade=True)
             plt.legend(loc='upper right')
         plt.xlabel("Object Confidence", fontsize=20)
         plt.ylabel("Knernel Density", fontsize=20)
@@ -80,20 +79,18 @@ class results():
         for i in range(len(df)):
             data = df.iloc[i, :].values
             name = df.iloc[i, :].name
-            color = self.color(df, i)
             rows = np.ceil(len(df) / col)
             ax = fig.add_subplot(rows, col, i+1)
-            sns.distplot(data, color=color, kde=False)
+            sns.distplot(data, kde=False)
             ax.set_title(name)
         ax.set_xlabel("mAP", fontsize=20)
 
-    def line_all(self, df, seperate=False):
+    def line_all(self, df, description='', seperate=False):
         plt.figure(figsize=self.figsize)
         for i in range(len(df)):
             data = df.iloc[i, :]
             name = df.iloc[i, :].name
-            color = self.color(df, i)
-            plt.plot(data, label=name, color=color)
+            plt.plot(data, label=description+name)
             plt.legend(loc='upper right')
         plt.xlabel("Object Confidence", fontsize=20)
         plt.ylabel("mAP", fontsize=20)
@@ -104,10 +101,9 @@ class results():
         for i in range(len(df)):
             data = df.iloc[i, :]
             name = df.iloc[i, :].name
-            color = self.color(df, i)
             rows = np.ceil(len(df) / col)
             ax = fig.add_subplot(rows, col, i+1)
-            ax.plot(data, color=color)
+            ax.plot(data)
             ax.set_title(name)
             ax.set_xlabel("Object Confidence", fontsize=20)
             ax.set_ylabel("mAP", fontsize=20)
@@ -118,7 +114,7 @@ class results():
 #        ax.set_xlim(0,1)
 #
 
-    def best_map(self, df, sort=True, only_map=True, fontsize=30):
+    def best_map(self, df, sort=True, only_map=True, fontsize=30, x_label=''):
         plt.figure(figsize=self.figsize)
         if only_map:
             map_max = df.max(axis=1)
@@ -132,6 +128,8 @@ class results():
         self.bar(map_max, fontsize)
 #        plt.xlabel("Number of Images", fontsize=20)
         plt.ylabel("mAP", fontsize=20)
+        if x_label != '':
+            plt.xlabel(x_label, fontsize=20)
 
     def bar(self, df, fontsize):
         ax = sns.barplot(x=df.index, y=df.values, palette=sns.color_palette(
@@ -150,14 +148,8 @@ class results():
             plt.show()
 
     # modify the color part for your own use case
-    def color(self, df, i):
-        try:
-            color = df.iloc[i, :].name.split('_')[0].replace('mAP', 'black')
-        except:
-            color = np.random.randint(0, 255)
-        return color
 
-    def map_improvement(self):
+    def map_improvement(self, x_label=''):
         plt.figure(figsize=self.figsize)
         # finding the max mAP for all tests
         map_max = self.map.max(axis=1)
@@ -175,6 +167,8 @@ class results():
         ssaplot.annotate(ax, message='Float', fontsize=30)
 #        plt.xlabel("Number of Images", fontsize=20)
         plt.ylabel("mAP percentage change (%)", fontsize=20)
+        if x_label != '':
+            plt.xlabel(x_label, fontsize=20)
         plt.suptitle("mAP percentage change", fontsize=self.title_size)
         plt.show()
 
@@ -230,21 +224,26 @@ class results():
         plt.show()
 
 
+
 def show():
-    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
-#    results_path = "../5Compare/input_size/2018-12-09_00_25_41.640054/"
     csv_name = "con_iou_map_frame.csv"
+    # img sample size experiment
+    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
     test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
                       "700_to_750_imgs"]
-#    test_name_list = ['608', '512', '416', '320']
+    
+    # input size experiment 
+#    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
+#    test_name_list = ['320', '416', '512', '608']
+    
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement()
-    visual.figsize = (14, 8)
+    visual.figsize = (8, 8)
     visual.compare_vis(visual.best_map, only_map=False)
     visual.compare_vis(visual.line_all)
-    visual.compare_map(visual.line_all)
-    visual.compare_map(visual.best_map)
+    visual.compare_map(visual.line_all, description='input_size=')
+    visual.compare_map(visual.best_map, sort=False)
     visual.compare_vis(visual.kdp_seperate)
     visual.compare_vis(visual.kdp_all)
     visual.heat_map()
