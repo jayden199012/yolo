@@ -197,11 +197,11 @@ class results():
     def get_time(self, label_fontsize=20, units='seconds'):
         plt.figure(figsize=self.figsize)
         if units == 'seconds':
-            ime_mean = round(self.time_mean, 2)
+            time_mean = round(self.time_mean, 2)
         elif units == 'minutes':
             time_mean = round(self.time_mean / 60, 2)
         elif units == 'hours':
-            time_mean = round(self.time_mean/ 360, 2)
+            time_mean = round(self.time_mean / 360, 2)
         else:
             raise NameError(f"Effective units are 'seconds', 'minutes' and \
                             'hours'")

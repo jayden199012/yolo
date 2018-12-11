@@ -139,30 +139,4 @@ if __name__ == '__main__':
 #    b = pickle.load(fp)
 
 
-# code thhat used to recover data
-#labels_df = pd.read_csv(label_name)
-#labels_df['img_name'] = labels_df['img_name'].str.replace(
-#        '1TrainData', 'color_balls')
-#img_name = pd.unique(labels_df.iloc[:, 0][labels_df.iloc[:, 1] != 0])
-#try_img = img_name[0]
-#for images in img_name:
-#            shutil.copy(images, to_path)
-#
-#
-#for img in img_name:
-#    try_df = labels_df[labels_df["img_name"] == img]
-#    try_df = try_df.iloc[:,1:]
-#    xx = np.array(try_df)
-#    xx[:,0] = np.int_(xx[:,0])
-#    xx[:,0] = xx[:,0].astype(int)
-#    with open(img[:-3] + 'txt','w') as f:
-#        for items in xx:
-#            for index, item in enumerate(items):
-#                if not index:
-#                    f.write(str((int(item))) +" ")
-#                else:
-#                    f.write(str(item) +" ")
-#            f.write("\n")
-#IMG_20181106_160325
-
 
