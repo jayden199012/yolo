@@ -15,6 +15,7 @@ from evaluate import eval_score, get_map
 from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
 from tensorboardX import SummaryWriter
+import psutil
 
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
@@ -55,6 +56,8 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
             optimizer.zero_grad()
             losses = model(images, cuda, is_training=True, labels=labels)
             loss = losses[0]
+            print(f"ram memory info before backward: "
+                  f"{psutil.virtual_memory()}")
             print(f"max_memory_allocated before backward: "
                   f"{torch.cuda.max_memory_allocated(device=0)}")
             print(f"memory_cached before backward: "
@@ -65,6 +68,8 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                   f"{torch.cuda.memory_allocated(device=0)}")
 
             loss.backward()
+            print(f"ram memory info after backward: "
+                  f"{psutil.virtual_memory()}")
             print(f"max_memory_allocated after backward: "
                   f"{torch.cuda.max_memory_allocated(device=0)}")
             print(f"memory_cached after backward: "
@@ -127,6 +132,8 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                 model.train(True)
             lr_scheduler.step()
             del losses
+            print(f"ram memory info after deleting losses var: "
+                  f"{psutil.virtual_memory()}")
             print(f"max_memory_allocated after deleting losses var: "
                   f"{torch.cuda.max_memory_allocated(device=0)}")
             print(f"memory_cached after deleting losses var: "
@@ -254,5 +261,5 @@ if __name__ == "__main__":
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
 
-#torch.cuda.max_memory_allocated()
-#torch.cuda.max_memory_cached()
+
+
