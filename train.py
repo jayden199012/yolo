@@ -55,7 +55,24 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
             optimizer.zero_grad()
             losses = model(images, cuda, is_training=True, labels=labels)
             loss = losses[0]
+            print(f"max_memory_allocated before backward: "
+                  f"{torch.cuda.max_memory_allocated(device=0)}")
+            print(f"memory_cached before backward: "
+                  f"{torch.cuda.memory_cached(device=0)}")
+            print(f"max_memory_cached before backward: "
+                  f"{torch.cuda.max_memory_cached(device=0)}")
+            print(f"memory_allocated before backward: "
+                  f"{torch.cuda.memory_allocated(device=0)}")
+
             loss.backward()
+            print(f"max_memory_allocated after backward: "
+                  f"{torch.cuda.max_memory_allocated(device=0)}")
+            print(f"memory_cached after backward: "
+                  f"{torch.cuda.memory_cached(device=0)}")
+            print(f"max_memory_cached after backward: "
+                  f"{torch.cuda.max_memory_cached(device=0)}")
+            print(f"memory_allocated after backward: "
+                  f"{torch.cuda.memory_allocated(device=0)}")
             optimizer.step()
 
             if step > 0 and step % 10 == 0:
@@ -109,6 +126,15 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                                                       config["global_step"])
                 model.train(True)
             lr_scheduler.step()
+            del losses
+            print(f"max_memory_allocated after deleting losses var: "
+                  f"{torch.cuda.max_memory_allocated(device=0)}")
+            print(f"memory_cached after deleting losses var: "
+                  f"{torch.cuda.memory_cached(device=0)}")
+            print(f"max_memory_cached after deleting losses var: "
+                  f"{torch.cuda.max_memory_cached(device=0)}")
+            print(f"memory_allocated after deleting losses var: "
+                  f"{torch.cuda.memory_allocated(device=0)}")
 
     # model.train(False)
     _save_checkpoint(model.state_dict(), config)
@@ -176,11 +202,11 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=model.net["batch"],
                               collate_fn=my_collate,
-                              num_workers=6, worker_init_fn=worker_init_fn)
+                              num_workers=2, worker_init_fn=worker_init_fn)
     test_loader = DataLoader(test_data, shuffle=False,
                              batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=6, worker_init_fn=worker_init_fn)
+                             num_workers=2, worker_init_fn=worker_init_fn)
     # create working if necessary
     if not os.path.exists(config["working_dir"]):
         os.makedirs(config["working_dir"])

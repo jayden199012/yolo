@@ -8,7 +8,8 @@ import numpy as np
 
 class yolo_v3(nn.Module):
     def __init__(self, blocks, lambda_coord=3,
-                 lambda_noobj=0.5, ignore_threshold=0.7, conf_lambda = 0.5):
+                 lambda_noobj=0.5, ignore_threshold=0.7, conf_lambda=3,
+                 cls_lambda=2):
         super().__init__()
         self.blocks = blocks[1:]
         self.net = blocks[0]
@@ -20,6 +21,7 @@ class yolo_v3(nn.Module):
         self.lambda_noobj = lambda_noobj
         self.ignore_threshold = ignore_threshold
         self.conf_lambda = conf_lambda
+        self.cls_lambda = cls_lambda
 
         self.mse_loss = nn.MSELoss()
         self.bce_loss = nn.BCELoss()
@@ -155,7 +157,7 @@ class yolo_v3(nn.Module):
 
         # final loss
         loss = self.lambda_coord * (loss_x + loss_y + loss_w + loss_h) + \
-            3 * loss_conf + 2 * loss_cls
+            self.conf_lambda * loss_conf + self.cls_lambda * loss_cls
 
         return loss, loss_x.item(), loss_y.item(), loss_w.item(), \
             loss_h.item(), loss_conf.item(), loss_cls.item()
