@@ -57,39 +57,40 @@ def split_train(label_name, train_size, random_state=0):
 def compare():
     date_time_now = str(
         datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    compare_path = f"../5Compare/epoch_experiment/{date_time_now}/"
+    compare_path = f"../5Compare/img_size/{date_time_now}/"
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
     config_name = "exp_config.p"
-    conf_list = np.arange(start=0.2, stop=0.95, step=0.025)
-    seed_range = range(420, 425)
+    conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
+    seed_range = range(420, 430)
     to_path_list = {"../250_to_300_imgs/": 1.05/7,
                     "../400_to_450_imgs/": 1/4,
                     "../550_to_600_imgs/": 3/7,
                     "../700_to_750_imgs/": 4.7/7}
-    epochs_list = [25, 30, 35, 40]
+    epochs = [15, 20, 25, 30, 35, 40]
     classes = load_classes('../4Others/color_ball.names')
     cfg_path = "../4Others/color_ball.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
-    model.net['epochs_list'] = epochs_list
     model.net['img_sampling_info'] = to_path_list
     with open(compare_path + config_name, "wb") as fp:
         pickle.dump(model.net, fp, protocol=pickle.HIGHEST_PROTOCOL)
+    time_taken_df = pd.DataFrame(columns=list(seed_range))
     for to_path, train_size in to_path_list.items():
-        time_taken_df = pd.DataFrame(columns=list(epochs_list))
         file_name = to_path.strip(".").strip("/")
         for index, seed in enumerate(seed_range):
+            model.load_weights("../4Weights/yolov3.weights",
+                               cust_train_zero=True)
             x_start = time.time()
             random.seed(seed)
             if not os.path.exists(to_path):
                 os.makedirs(to_path)
-
+            sub_name = f"{file_name}_seed_{seed}_"
             name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
             # Original label names
-            label_csv_mame = '../color_balls/label.csv'
-            img_txt_path = "../color_balls/*.txt"
+            label_csv_mame = '../color_balls_1024/label.csv'
+            img_txt_path = "../color_balls_1024/*.txt"
             prep_labels(img_txt_path, name_list, label_csv_mame)
             # sub sampled label names
             sub_sample_csv_name = to_path + "label.csv"
@@ -100,29 +101,23 @@ def compare():
             move_images(label_name=label_csv_mame, to_path=to_path,
                         action_fn=split_train, train_size=train_size,
                         random_state=seed)
-            for epoch in epochs_list:
-                model.load_weights("../4Weights/yolov3.weights",
-                                   cust_train_zero=True)
-                model.net['epochs'] = epoch
-                sub_name = f"{file_name}_seed_{seed}_epoch_{epoch}_"
-                best_map, best_ap, best_conf, specific_conf_map,\
-                    specific_conf_ap, map_frame = main(model,
-                                                       classes, conf_list,
-                                                       sub_sample_csv_name,
-                                                       sub_sample_txt_path,
-                                                       to_path,
-                                                       cuda=True,
-                                                       specific_conf=0.5,
-                                                       sub_name=sub_name)
+            best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
+                map_frame = main(model,
+                                 classes, conf_list,
+                                 sub_sample_csv_name,
+                                 sub_sample_txt_path,
+                                 to_path,
+                                 cuda=True,
+                                 specific_conf=0.5,
+                                 sub_name=sub_name)
 
-                map_frame.to_csv(f"{compare_path+sub_name}.csv",
-                                 index=True)
-                time_taken_df.loc[file_name, epoch] = time.time() - x_start
-                # if you change the csv_name, pls change accordingly in the
-                # visualization part
-                time_taken_df.to_csv(compare_path +
-                                     'time_taken_{seed}.csv', index=True)
+            map_frame.to_csv(f"{compare_path+sub_name}.csv",
+                             index=True)
             shutil.rmtree(to_path)
+            time_taken_df.loc[file_name, seed] = time.time() - x_start
+            # if you change the csv_name, pls change accordingly in the 
+            # visualization part
+            time_taken_df.to_csv(compare_path + 'time_taken.csv', index=True)
 
 
 if __name__ == '__main__':

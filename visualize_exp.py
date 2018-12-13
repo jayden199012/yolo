@@ -35,6 +35,7 @@ class results():
         time_mean = df.mean(axis=1)
         return time_mean
 
+    # returns a dictionary of a average dataframe for each test categories
     def get_avg_df(self):
         df = {}
         for item in self.test_name_list:
@@ -52,6 +53,7 @@ class results():
             df[item] = df[item]/count
         return df
 
+    # returns a datafram of mAP for all test categories
     def get_map_df(self):
         columns = list(self.all_df.values())[0].columns.values
         index = list(self.all_df.keys())
@@ -149,7 +151,7 @@ class results():
 
     # modify the color part for your own use case
 
-    def map_improvement(self, x_label=''):
+    def map_improvement(self, base_pos, x_label=''):
         plt.figure(figsize=self.figsize)
         # finding the max mAP for all tests
         map_max = self.map.max(axis=1)
@@ -157,8 +159,9 @@ class results():
         len_map = len(map_max.values)
         y = []
         x = []
+        base_value = map_max.values[base_pos]
         for i in range(1, len_map):
-            improvement = np.log(map_max.values[i]/map_max.values[i-1]) * 100
+            improvement = (map_max.values[i]-base_value)/base_value * 100
             index = f"From {map_max.index[i-1]} to {map_max.index[i]}"
             y.append(improvement)
             x.append(index)
@@ -202,14 +205,15 @@ class results():
         self.bar(time_mean, label_fontsize)
         plt.ylabel(f"Average Training Time Taken in ({units})", fontsize=20)
 
-    def time_increase(self, description=''):
+    def time_increase(self, base_pos, description=''):
         plt.figure(figsize=self.figsize)
         x = []
         y = []
+        base_value = self.time_mean.values[base_pos]
         for i in range(1, len(self.time_mean)):
-            percentage_change = np.log(
-                    self.time_mean.values[i]/self.time_mean.values[i-1]
-                                ) * 100
+            percentage_change = (
+                                self.time_mean.values[i]-base_value
+                                )/base_value * 100
             index = f"From {self.time_mean.index[i-1]} " +\
                     f"to {self.time_mean.index[i]}"
             y.append(percentage_change)
@@ -238,8 +242,12 @@ def show():
 #    test_name_list = ['320', '416', '512', '608']
 
     # input size experiment
-    results_path = "../5Compare/batch_size/2018-12-11_02_12_06.717949/"
-    test_name_list = ['5', '10', '15', '20']
+#    results_path = "../5Compare/batch_size/2018-12-11_02_12_06.717949/"
+#    test_name_list = ['5', '10', '15', '20']
+
+    # epoch experiment
+    results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
+    test_name_list = [str(x) for x in [15, 20, 25, 30, 35, 40]]
 
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)

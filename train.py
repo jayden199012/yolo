@@ -56,28 +56,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
             optimizer.zero_grad()
             losses = model(images, cuda, is_training=True, labels=labels)
             loss = losses[0]
-            print(f"ram memory info before backward: "
-                  f"{psutil.virtual_memory()}")
-            print(f"max_memory_allocated before backward: "
-                  f"{torch.cuda.max_memory_allocated(device=0)}")
-            print(f"memory_cached before backward: "
-                  f"{torch.cuda.memory_cached(device=0)}")
-            print(f"max_memory_cached before backward: "
-                  f"{torch.cuda.max_memory_cached(device=0)}")
-            print(f"memory_allocated before backward: "
-                  f"{torch.cuda.memory_allocated(device=0)}")
-
             loss.backward()
-            print(f"ram memory info after backward: "
-                  f"{psutil.virtual_memory()}")
-            print(f"max_memory_allocated after backward: "
-                  f"{torch.cuda.max_memory_allocated(device=0)}")
-            print(f"memory_cached after backward: "
-                  f"{torch.cuda.memory_cached(device=0)}")
-            print(f"max_memory_cached after backward: "
-                  f"{torch.cuda.max_memory_cached(device=0)}")
-            print(f"memory_allocated after backward: "
-                  f"{torch.cuda.memory_allocated(device=0)}")
             optimizer.step()
 
             if step > 0 and step % 10 == 0:
@@ -131,17 +110,6 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                                                       config["global_step"])
                 model.train(True)
             lr_scheduler.step()
-            del losses
-            print(f"ram memory info after deleting losses var: "
-                  f"{psutil.virtual_memory()}")
-            print(f"max_memory_allocated after deleting losses var: "
-                  f"{torch.cuda.max_memory_allocated(device=0)}")
-            print(f"memory_cached after deleting losses var: "
-                  f"{torch.cuda.memory_cached(device=0)}")
-            print(f"max_memory_cached after deleting losses var: "
-                  f"{torch.cuda.max_memory_cached(device=0)}")
-            print(f"memory_allocated after deleting losses var: "
-                  f"{torch.cuda.memory_allocated(device=0)}")
 
     # model.train(False)
     _save_checkpoint(model.state_dict(), config)
