@@ -11,7 +11,11 @@ import torch
 import logging
 import datetime
 
-
+def label_action_func(label):
+    
+    
+    
+    
 # label_name = '../1TestData/label.csv'
 def compare():
     date_time_now = str(
@@ -103,7 +107,7 @@ def my_func(var3, var4):
     for i in var3:
         print(i+var4)
 
-
+my_func.var3
 var3 = [1, 3, 4]
 var4 = 5
 my_com = compare(func1=my_func, var3=var3, var4=var4)

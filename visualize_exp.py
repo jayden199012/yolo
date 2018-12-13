@@ -28,7 +28,9 @@ class results():
         self.hspace = hspace
         self.wspace = wspace
         self.time_mean = self.get_time_mean()
-        if not xtra_var:
+        if xtra_var:
+            self.map = self.get_avg_df(xtra_var)
+        else:
             self.map = self.get_map_df()
 
     def get_time_mean(self):
@@ -140,7 +142,6 @@ class results():
 #        ax.set_xlabel('Xlabel')
 #        ax.set_ylabel('Ylabel')
 #        ax.set_xlim(0,1)
-#
 
     def best_map(self, df, sort=True, only_map=True, fontsize=30, x_label=''):
         plt.figure(figsize=self.figsize)
@@ -161,7 +162,7 @@ class results():
 
     def bar(self, df, fontsize):
         ax = sns.barplot(x=df.index, y=df.values, palette=sns.color_palette(
-                "RdYlBu", 12), saturation=0.85)
+                "RdYlBu", 12), saturation=0.85, order=df.index)
         ssaplot.annotate(ax, message='Float', fontsize=fontsize)
 
     def compare_vis(self, func, **kwargs):
@@ -171,13 +172,16 @@ class results():
             plt.show()
 
     def compare_map(self, func, **kwargs):
+        if isinstance(self.map, dict):
+            for i in range(len(self.map)):
+                func(self.map[self.test_name_list[i]], **kwargs)
+                plt.suptitle("mAP Comparism", fontsize=self.title_size)
+        else:
             func(self.map, **kwargs)
-            plt.suptitle("mAP Comparism", fontsize=self.title_size)
-            plt.show()
+            plt.suptitle("Best mAP Comparism", fontsize=self.title_size)
+        plt.show()
 
-    # modify the color part for your own use case
-
-    def map_improvement(self, base_pos, x_label=''):
+    def map_improvement(self, base_pos=0, x_label=''):
         plt.figure(figsize=self.figsize)
         # finding the max mAP for all tests
         map_max = self.map.max(axis=1)
@@ -231,7 +235,7 @@ class results():
         self.bar(time_mean, label_fontsize)
         plt.ylabel(f"Average Training Time Taken in ({units})", fontsize=20)
 
-    def time_increase(self, base_pos, description=''):
+    def time_increase(self, base_pos=0, description=''):
         plt.figure(figsize=self.figsize)
         x = []
         y = []
@@ -259,30 +263,40 @@ class results():
 def show():
     csv_name = "con_iou_map_frame.csv"
     # img sample size experiment
-    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
-    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
-                      "700_to_750_imgs"]
+#    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
+#    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
+#                      "700_to_750_imgs"]
 
     # input size experiment
 #    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
 #    test_name_list = ['320', '416', '512', '608']
 
-    # input size experiment
+    # batch size experiment
 #    results_path = "../5Compare/batch_size/2018-12-11_02_12_06.717949/"
 #    test_name_list = ['5', '10', '15', '20']
 
     # epoch experiment
-    results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
-    part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
-              "700_to_750_imgs"]
-    part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
-    visual = results(results_path, part_a, csv_name, xtra_var=part_b,)
-visual.compare_vis(visual.best_map, sort=False)
-
+#    results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
+#    part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
+#              "700_to_750_imgs"]
+#    part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
+#    visual = results(results_path, part_a, csv_name, xtra_var=part_b,)
+#    visual.compare_map(visual.best_map, sort=False)
+#    visual.compare_map(visual.line_all)
+    
+    # conf_loss
+    results_path = "../5Compare/conf_lambda/2018-12-12_22_12_37.511263/"
+    test_name_list = [str(x) for x in range(1, 6)]
+    visual = results(results_path, test_name_list, csv_name)
+    visual.compare_map(visual.best_map, sort=False)
+    visual.compare_map(visual.line_all)
+    
+    
+    
 #    visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement(x_label='Batch Size')
-    visual.figsize = (18, 8)
+    visual.figsize = (12, 10)
     visual.compare_vis(visual.best_map, only_map=False)
     visual.compare_vis(visual.line_all)
     visual.compare_map(visual.line_all, description='Batch Size=')
