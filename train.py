@@ -176,11 +176,11 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=model.net["batch"],
                               collate_fn=my_collate,
-                              num_workers=2, worker_init_fn=worker_init_fn)
+                              num_workers=6, worker_init_fn=worker_init_fn)
     test_loader = DataLoader(test_data, shuffle=False,
                              batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=2, worker_init_fn=worker_init_fn)
+                             num_workers=6, worker_init_fn=worker_init_fn)
     # create working if necessary
     if not os.path.exists(config["working_dir"]):
         os.makedirs(config["working_dir"])

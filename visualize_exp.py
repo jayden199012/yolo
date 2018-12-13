@@ -23,12 +23,13 @@ class results():
         self.csv_name = csv_name
         self.test_name_list = test_name_list
         self.all_df = self.get_avg_df(xtra_var)
-        self.map = self.get_map_df()
         self.figsize = figsize
         self.title_size = title_size
         self.hspace = hspace
         self.wspace = wspace
         self.time_mean = self.get_time_mean()
+        if not xtra_var:
+            self.map = self.get_map_df()
 
     def get_time_mean(self):
         df = pd.read_csv(f"{self.results_path}time_taken.csv", index_col=0)
@@ -40,10 +41,27 @@ class results():
         df = {}
         if xtra_var:
             for a in self.test_name_list:
+                get_col = True
                 for b in xtra_var:
-                    test_name = f"{self.results_path+a}*{b}.csv"
+                    test_name = f"{self.results_path}{a}*{b}.csv"
                     read_files = glob.glob(test_name)
-            
+                    first = True
+                    for file in read_files:
+                        df_ = pd.read_csv(file, index_col=0)
+                        map_col = df_.iloc[4, :].values
+                        if get_col:
+                            cols = [np.round(np.float(x),
+                                             3) for x in df_.columns]
+                            new_df = pd.DataFrame(columns=cols)
+                            get_col = False
+                        if first:
+                            new_df.loc[f"{a}_{b}", :] = map_col
+                            first = False
+                        else:
+                            new_df.loc[f"{a}_{b}", :] += map_col
+                new_df = new_df / len(read_files)
+                df[a] = new_df
+
         else:
             for item in self.test_name_list:
                 test_name = self.results_path + item + "*.csv"
@@ -51,7 +69,8 @@ class results():
                 count = 0
                 for file in read_files:
                     df_ = pd.read_csv(file, index_col=0)
-                    df_.columns = [np.round(np.float(x), 3) for x in df_.columns]
+                    df_.columns = [np.round(np.float(x),
+                                            3) for x in df_.columns]
                     if not count:
                         df[item] = df_
                     else:
@@ -257,12 +276,10 @@ def show():
     part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
               "700_to_750_imgs"]
     part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
+    visual = results(results_path, part_a, csv_name, xtra_var=part_b,)
+visual.compare_vis(visual.best_map, sort=False)
 
-    def df_all_two_var(part_a, part_b):
-        
-
-
-    visual = results(results_path, test_name_list, csv_name)
+#    visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement(x_label='Batch Size')
     visual.figsize = (18, 8)
