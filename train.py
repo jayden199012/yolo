@@ -15,7 +15,6 @@ from evaluate import eval_score, get_map
 from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
 from tensorboardX import SummaryWriter
-import psutil
 
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
@@ -56,29 +55,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
             optimizer.zero_grad()
             losses = model(images, cuda, is_training=True, labels=labels)
             loss = losses[0]
-            torch.cuda.empty_cache()
-            logging.info(f"ram memory info before loss.backward(): "
-                  f"{psutil.virtual_memory()}")
-            logging.info(f"max_memory_allocated before loss.backward(): "
-                  f"{torch.cuda.max_memory_allocated(device=0)}")
-            logging.info(f"memory_cached before loss.backward(): "
-                  f"{torch.cuda.memory_cached(device=0)}")
-            logging.info(f"max_memory_cached before loss.backward(): "
-                  f"{torch.cuda.max_memory_cached(device=0)}")
-            logging.info(f"memory_allocated before loss.backward(): "
-                  f"{torch.cuda.memory_allocated(device=0)}")
-            torch.cuda.empty_cache()
             loss.backward()
-            logging.info(f"ram memory info after loss.backward(): "
-                  f"{psutil.virtual_memory()}")
-            logging.info(f"max_memory_allocated after loss.backward(): "
-                  f"{torch.cuda.max_memory_allocated(device=0)}")
-            logging.info(f"memory_cached after loss.backward(): "
-                  f"{torch.cuda.memory_cached(device=0)}")
-            logging.info(f"max_memory_cached after loss.backward(): "
-                  f"{torch.cuda.max_memory_cached(device=0)}")
-            logging.info(f"memory_allocated after loss.backward(): "
-                  f"{torch.cuda.memory_allocated(device=0)}")
             optimizer.step()
 
             if step > 0 and step % 10 == 0:
@@ -199,11 +176,11 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=model.net["batch"],
                               collate_fn=my_collate,
-                              num_workers=6, worker_init_fn=worker_init_fn)
+                              num_workers=2, worker_init_fn=worker_init_fn)
     test_loader = DataLoader(test_data, shuffle=False,
                              batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=6, worker_init_fn=worker_init_fn)
+                             num_workers=2, worker_init_fn=worker_init_fn)
     # create working if necessary
     if not os.path.exists(config["working_dir"]):
         os.makedirs(config["working_dir"])
@@ -250,3 +227,6 @@ if __name__ == "__main__":
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
+
+#torch.cuda.max_memory_allocated()
+#torch.cuda.max_memory_cached()

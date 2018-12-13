@@ -18,11 +18,11 @@ warnings.filterwarnings("ignore")
 
 class results():
     def __init__(self, results_path, test_name_list, csv_name, figsize=(20, 8),
-                 title_size=20, hspace=0.6, wspace=0.4):
+                 title_size=20, hspace=0.6, wspace=0.4, xtra_var=False):
         self.results_path = results_path
         self.csv_name = csv_name
         self.test_name_list = test_name_list
-        self.all_df = self.get_avg_df()
+        self.all_df = self.get_avg_df(xtra_var)
         self.map = self.get_map_df()
         self.figsize = figsize
         self.title_size = title_size
@@ -36,21 +36,28 @@ class results():
         return time_mean
 
     # returns a dictionary of a average dataframe for each test categories
-    def get_avg_df(self):
+    def get_avg_df(self, xtra_var):
         df = {}
-        for item in self.test_name_list:
-            test_name = self.results_path + item + "*.csv"
-            read_files = glob.glob(test_name)
-            count = 0
-            for file in read_files:
-                df_ = pd.read_csv(file, index_col=0)
-                df_.columns = [np.round(np.float(x), 3) for x in df_.columns]
-                if not count:
-                    df[item] = df_
-                else:
-                    df[item] += df_
-                count += 1
-            df[item] = df[item]/count
+        if xtra_var:
+            for a in self.test_name_list:
+                for b in xtra_var:
+                    test_name = f"{self.results_path+a}*{b}.csv"
+                    read_files = glob.glob(test_name)
+            
+        else:
+            for item in self.test_name_list:
+                test_name = self.results_path + item + "*.csv"
+                read_files = glob.glob(test_name)
+                count = 0
+                for file in read_files:
+                    df_ = pd.read_csv(file, index_col=0)
+                    df_.columns = [np.round(np.float(x), 3) for x in df_.columns]
+                    if not count:
+                        df[item] = df_
+                    else:
+                        df[item] += df_
+                    count += 1
+                df[item] = df[item]/count
         return df
 
     # returns a datafram of mAP for all test categories
@@ -233,9 +240,9 @@ class results():
 def show():
     csv_name = "con_iou_map_frame.csv"
     # img sample size experiment
-#    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
-#    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
-#                      "700_to_750_imgs"]
+    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
+    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
+                      "700_to_750_imgs"]
 
     # input size experiment
 #    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
@@ -247,7 +254,13 @@ def show():
 
     # epoch experiment
     results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
-    test_name_list = [str(x) for x in [15, 20, 25, 30, 35, 40]]
+    part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
+              "700_to_750_imgs"]
+    part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
+
+    def df_all_two_var(part_a, part_b):
+        
+
 
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
@@ -264,7 +277,6 @@ def show():
     visual.time_increase(description='Image Input Size')
     visual.heat_map(annotation=True)
 #    con_iou_map_frame(results_path, csv_name)
-
 
 def conf_map_frame(iou_conf, conf_list):
     cuda = True

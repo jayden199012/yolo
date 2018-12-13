@@ -48,7 +48,7 @@ def compare():
             np.random.seed(seed)
             torch.manual_seed(seed)
             torch.cuda.manual_seed(seed)
-            sub_name = f"conf_lambda_{conf_lambda}_seed_{seed}_"
+            sub_name = f"{conf_lambda}_seed_{seed}_"
             # label_csv_mame = '../1TestData/label.csv'
             # img_txt_path = "../1TestData/*.txt"
             best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
