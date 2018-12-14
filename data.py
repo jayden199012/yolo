@@ -47,7 +47,7 @@ class CustData(Dataset):
                 :, 0] == img_name].astype('float').values.reshape(-1, 5)
         if self.label_action_func:
             self.labels = labels
-            arg_name = inspect.getfullargspec(self.func1).args
+            arg_name = inspect.getfullargspec(self.label_action_func).args
             args = [self.__dict__[name] for name in arg_name]
             labels = self.label_action_func(*args)
         if self.pre_trans:

@@ -230,6 +230,3 @@ if __name__ == "__main__":
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
-
-
-

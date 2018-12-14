@@ -1,4 +1,3 @@
-from sklearn.model_selection import StratifiedShuffleSplit
 from utilis import move_images, prep_labels, load_classes, parse_cfg
 from yolo_v3 import yolo_v3
 from train import main
@@ -14,15 +13,20 @@ import logging
 import datetime
 
 
-def label_action_func(labels, cat_nums):
-    labels = labels[[x in cat_nums for x in labels[:, 0]]]
-    return labels
+class label_action():
+    def __init__(self, cat_nums):
+        self.cat_nums = cat_nums
+
+    def run(self, labels):
+        labels = labels[[x in self.cat_nums for x in labels[:, 0]]]
+        return labels
 
 
 def action_fn(label_name, cat_nums):
 
     labels_df = pd.read_csv(label_name)
     # train dataframe with possible dupliocates
+
     train_temp = labels_df[labels_df.c.isin(cat_nums)]
 
     # remove duplicates image names
@@ -33,7 +37,7 @@ def action_fn(label_name, cat_nums):
 
     return train
 
-train = action_fn(label_csv_mame, cat_nums)
+
 # label_name = '../1TestData/label.csv'
 def compare():
     date_time_now = str(
@@ -43,25 +47,26 @@ def compare():
         os.makedirs(compare_path)
     config_name = "exp_config.p"
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
-    seed_range = range(420, 430)
+    seed_range = range(420, 425)
     classes = load_classes('../4Others/color_ball.names')
     cfg_path = "../4Others/color_ball.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
-    model.net['img_sampling_info'] = to_path_list
     with open(compare_path + config_name, "wb") as fp:
         pickle.dump(model.net, fp, protocol=pickle.HIGHEST_PROTOCOL)
     time_taken_df = pd.DataFrame(columns=list(seed_range))
     for cls_index,  cls in enumerate(classes):
+        to_path = f"../{cls}/"
+        label_action_cls = label_action(list([cls_index]))
         for index, seed in enumerate(seed_range):
             model.load_weights("../4Weights/yolov3.weights",
                                cust_train_zero=True)
             x_start = time.time()
             random.seed(seed)
-            if not os.path.exists(cls_index):
-                os.makedirs(cls_index)
-            sub_name = f"{file_name}_seed_{seed}_"
+            if not os.path.exists(to_path):
+                os.makedirs(to_path)
+            sub_name = f"{cls}_seed_{seed}_"
             name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
             # Original label names
             label_csv_mame = '../color_balls/label.csv'
@@ -74,7 +79,7 @@ def compare():
             # label_csv_mame = '../1TestData/label.csv'
             # img_txt_path = "../1TestData/*.txt"
             move_images(label_name=label_csv_mame, to_path=to_path,
-                        action_fn=action_fn)
+                        action_fn=action_fn, cat_nums=[cls_index])
             best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
                 map_frame = main(model,
                                  classes, conf_list,
@@ -83,12 +88,13 @@ def compare():
                                  to_path,
                                  cuda=True,
                                  specific_conf=0.5,
-                                 sub_name=sub_name)
+                                 sub_name=sub_name,
+                                 label_action_func=label_action_cls.run)
 
             map_frame.to_csv(f"{compare_path+sub_name}.csv",
                              index=True)
             shutil.rmtree(to_path)
-            time_taken_df.loc[file_name, seed] = time.time() - x_start
+            time_taken_df.loc[cls, seed] = time.time() - x_start
             # if you change the csv_name, pls change accordingly in the 
             # visualization part
             time_taken_df.to_csv(compare_path + 'time_taken.csv', index=True)

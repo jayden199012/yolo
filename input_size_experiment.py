@@ -73,6 +73,8 @@ def compare():
 
 if __name__ == '__main__':
     seed = 1
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
