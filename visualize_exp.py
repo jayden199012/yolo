@@ -276,20 +276,20 @@ def show():
 #    test_name_list = ['5', '10', '15', '20']
 
     # epoch experiment
-#    results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
-#    part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
-#              "700_to_750_imgs"]
-#    part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
-#    visual = results(results_path, part_a, csv_name, xtra_var=part_b,)
-#    visual.compare_map(visual.best_map, sort=False)
-#    visual.compare_map(visual.line_all)
-    
-    # conf_loss
-    results_path = "../5Compare/conf_lambda/2018-12-12_22_12_37.511263/"
-    test_name_list = [str(x) for x in range(1, 6)]
-    visual = results(results_path, test_name_list, csv_name)
+    results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
+    part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
+              "700_to_750_imgs"]
+    part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
+    visual = results(results_path, part_a, csv_name, xtra_var=part_b,)
     visual.compare_map(visual.best_map, sort=False)
     visual.compare_map(visual.line_all)
+    
+    # conf_loss
+#    results_path = "../5Compare/conf_lambda/2018-12-12_22_12_37.511263/"
+#    test_name_list = [str(x) for x in range(1, 6)]
+#    visual = results(results_path, test_name_list, csv_name)
+#    visual.compare_map(visual.best_map, sort=False)
+#    visual.compare_map(visual.line_all)
     
     
     

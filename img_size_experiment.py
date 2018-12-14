@@ -88,13 +88,12 @@ def compare():
             sub_name = f"{file_name}_seed_{seed}_"
             name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
             # Original label names
-            label_csv_mame = '../color_balls_1024/label.csv'
-            img_txt_path = "../color_balls_1024/*.txt"
+            label_csv_mame = '../color_balls/label.csv'
+            img_txt_path = "../color_balls/*.txt"
             prep_labels(img_txt_path, name_list, label_csv_mame)
             # sub sampled label names
             sub_sample_csv_name = to_path + "label.csv"
             sub_sample_txt_path = to_path + "*.txt"
-            prep_labels(sub_sample_txt_path, name_list, sub_sample_csv_name)
             # label_csv_mame = '../1TestData/label.csv'
             # img_txt_path = "../1TestData/*.txt"
             move_images(label_name=label_csv_mame, to_path=to_path,

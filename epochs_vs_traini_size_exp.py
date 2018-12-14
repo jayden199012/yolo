@@ -94,7 +94,6 @@ def compare():
             # sub sampled label names
             sub_sample_csv_name = to_path + "label.csv"
             sub_sample_txt_path = to_path + "*.txt"
-            prep_labels(sub_sample_txt_path, name_list, sub_sample_csv_name)
             # label_csv_mame = '../1TestData/label.csv'
             # img_txt_path = "../1TestData/*.txt"
             move_images(label_name=label_csv_mame, to_path=to_path,

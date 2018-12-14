@@ -136,7 +136,8 @@ def worker_init_fn(worker_id):
 
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
-         cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name=''):
+         cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name='',
+         label_action_func=False):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     config = model.net
@@ -170,17 +171,19 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
 
     train_data = CustData(label_csv_mame, root_dir,
                           pre_trans=pre_trans,
-                          transform=train_transform)
+                          transform=train_transform,
+                          label_action_func=label_action_func)
     test_data = CustData(test_label_csv_mame, test_root_dir,
-                         transform=test_transform)
+                         transform=test_transform,
+                         label_action_func=label_action_func)
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=model.net["batch"],
                               collate_fn=my_collate,
-                              num_workers=6, worker_init_fn=worker_init_fn)
+                              num_workers=2, worker_init_fn=worker_init_fn)
     test_loader = DataLoader(test_data, shuffle=False,
                              batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=6, worker_init_fn=worker_init_fn)
+                             num_workers=2, worker_init_fn=worker_init_fn)
     # create working if necessary
     if not os.path.exists(config["working_dir"]):
         os.makedirs(config["working_dir"])
@@ -228,5 +231,5 @@ if __name__ == "__main__":
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
 
-#torch.cuda.max_memory_allocated()
-#torch.cuda.max_memory_cached()
+
+
