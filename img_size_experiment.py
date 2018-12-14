@@ -136,6 +136,3 @@ if __name__ == '__main__':
 
 #with open(compare_path + config_name, 'rb') as fp:
 #    b = pickle.load(fp)
-
-
-

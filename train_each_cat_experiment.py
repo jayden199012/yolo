@@ -13,15 +13,6 @@ import logging
 import datetime
 
 
-class label_action():
-    def __init__(self, cat_nums):
-        self.cat_nums = cat_nums
-
-    def run(self, labels):
-        labels = labels[[x in self.cat_nums for x in labels[:, 0]]]
-        return labels
-
-
 def action_fn(label_name, cat_nums):
 
     labels_df = pd.read_csv(label_name)
@@ -42,7 +33,7 @@ def action_fn(label_name, cat_nums):
 def compare():
     date_time_now = str(
         datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    compare_path = f"../5Compare/img_size/{date_time_now}/"
+    compare_path = f"../5Compare/individual_train/{date_time_now}/"
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
     config_name = "exp_config.p"
@@ -58,7 +49,6 @@ def compare():
     time_taken_df = pd.DataFrame(columns=list(seed_range))
     for cls_index,  cls in enumerate(classes):
         to_path = f"../{cls}/"
-        label_action_cls = label_action(list([cls_index]))
         for index, seed in enumerate(seed_range):
             model.load_weights("../4Weights/yolov3.weights",
                                cust_train_zero=True)
@@ -89,7 +79,7 @@ def compare():
                                  cuda=True,
                                  specific_conf=0.5,
                                  sub_name=sub_name,
-                                 label_action_func=label_action_cls.run)
+                                 selected_cls=[str(x) for x in [cls_index]])
 
             map_frame.to_csv(f"{compare_path+sub_name}.csv",
                              index=True)
@@ -101,6 +91,7 @@ def compare():
 
 
 if __name__ == '__main__':
+    torch.backends.cudnn.enabled = False
     seed = 1
     random.seed(seed)
     np.random.seed(seed)

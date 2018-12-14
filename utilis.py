@@ -438,7 +438,7 @@ def get_test_input():
     return img_
 
 
-def prep_labels(img_txt_path, name_list, label_csv_mame):
+def prep_labels(img_txt_path, name_list, label_csv_mame, selected_cls=False):
     out_file = pd.DataFrame(columns=name_list)
     read_files = glob.glob(img_txt_path)
     index = 0
@@ -452,6 +452,8 @@ def prep_labels(img_txt_path, name_list, label_csv_mame):
                     else:
                         out_file.loc[index, col] = items[i-1]
                 index += 1
+    if selected_cls:
+        out_file = out_file[out_file.c.isin(selected_cls)]
     out_file.to_csv(label_csv_mame, index=False)
 
 

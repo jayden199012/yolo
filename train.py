@@ -137,17 +137,19 @@ def worker_init_fn(worker_id):
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
          cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name='',
-         label_action_func=False):
+         selected_cls=False):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     config = model.net
     test_root_dir = "../1TestData"
     # label csv column names
     name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
-    prep_labels(img_txt_path, name_list, label_csv_mame)
+    prep_labels(img_txt_path, name_list, label_csv_mame,
+                selected_cls=selected_cls)
     test_label_csv_mame = '../1TestData/label.csv'
     test_img_txt_path = "../1TestData/*.txt"
-    prep_labels(test_img_txt_path, name_list, test_label_csv_mame)
+    prep_labels(test_img_txt_path, name_list, test_label_csv_mame,
+                selected_cls=selected_cls)
     optimizer = optim.SGD(model.module_list.parameters(),
                           lr=config["learning_rate"],
                           momentum=config["momentum"],
@@ -171,19 +173,17 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
 
     train_data = CustData(label_csv_mame, root_dir,
                           pre_trans=pre_trans,
-                          transform=train_transform,
-                          label_action_func=label_action_func)
+                          transform=train_transform)
     test_data = CustData(test_label_csv_mame, test_root_dir,
-                         transform=test_transform,
-                         label_action_func=label_action_func)
+                         transform=test_transform)
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=model.net["batch"],
                               collate_fn=my_collate,
-                              num_workers=2, worker_init_fn=worker_init_fn)
+                              num_workers=6, worker_init_fn=worker_init_fn)
     test_loader = DataLoader(test_data, shuffle=False,
                              batch_size=model.net["batch"],
                              collate_fn=my_collate,
-                             num_workers=2, worker_init_fn=worker_init_fn)
+                             num_workers=6, worker_init_fn=worker_init_fn)
     # create working if necessary
     if not os.path.exists(config["working_dir"]):
         os.makedirs(config["working_dir"])

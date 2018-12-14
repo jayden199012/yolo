@@ -11,7 +11,7 @@ class CustData(Dataset):
 
     def __init__(self, csv_file, root_dir,
                  pre_trans=None, transform=None, post_trans=None,
-                 label_action_func=False, **kwargs):
+                 label_action_func=False):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -34,8 +34,7 @@ class CustData(Dataset):
         self.transform = transform
         self.post_trans = post_trans
         self.list_IDs = self.label_frame.iloc[:, 0].unique()
-        self.label_action_func = label_action_func
-        self.__dict__.update(kwargs)
+
 
     def __len__(self):
         return len(self.list_IDs)
@@ -45,11 +44,6 @@ class CustData(Dataset):
         image = Image.open(img_name)
         labels = self.label_frame.iloc[:, 1:][self.label_frame.iloc[
                 :, 0] == img_name].astype('float').values.reshape(-1, 5)
-        if self.label_action_func:
-            self.labels = labels
-            arg_name = inspect.getfullargspec(self.label_action_func).args
-            args = [self.__dict__[name] for name in arg_name]
-            labels = self.label_action_func(*args)
         if self.pre_trans:
             image, labels = self.pre_trans(image, labels)
         if self.transform:
@@ -108,6 +102,3 @@ class RandomCrop:
 #        labels = labels[~(labels == 0).all(1)]
         image = Image.fromarray(pix.astype('uint8'))
         return image, labels
-
-
-
