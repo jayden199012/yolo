@@ -12,23 +12,26 @@ from data import CustData
 from torchvision import transforms
 from utilis import parse_cfg,  my_collate, load_classes
 from yolo_v3 import yolo_v3
+import pickle
 import warnings
 warnings.filterwarnings("ignore")
 
 
 class results():
     def __init__(self, results_path, test_name_list, csv_name, figsize=(20, 8),
-                 title_size=20, hspace=0.6, wspace=0.4, xtra_var=False):
+                 title_size=20, hspace=0.6, wspace=0.4, xtra_var=False,
+                 indi_train=False):
         self.results_path = results_path
         self.csv_name = csv_name
         self.test_name_list = test_name_list
+        self.indi_train = indi_train
         self.all_df = self.get_avg_df(xtra_var)
         self.figsize = figsize
         self.title_size = title_size
         self.hspace = hspace
         self.wspace = wspace
         self.time_mean = self.get_time_mean()
-        if xtra_var:
+        if any([xtra_var, indi_train]):
             self.map = self.get_avg_df(xtra_var)
         else:
             self.map = self.get_map_df()
@@ -38,9 +41,9 @@ class results():
         time_mean = df.mean(axis=1)
         return time_mean
 
-    # returns a dictionary of a average dataframe for each test categories
     def get_avg_df(self, xtra_var):
         df = {}
+        # returns a dictionary containing C dataframe for each test Categories
         if xtra_var:
             for a in self.test_name_list:
                 get_col = True
@@ -79,6 +82,15 @@ class results():
                         df[item] += df_
                     count += 1
                 df[item] = df[item]/count
+        if self.indi_train:
+            first = True
+            for key in df.keys():
+                if first:
+                    df_ = pd.DataFrame(columns=df[key].columns)
+                    first = False
+                df_.loc[key] = df[key].loc[key, :]
+            df_.loc['mAP', :] = df_.mean()
+            df = df_
         return df
 
     # returns a datafram of mAP for all test categories
@@ -171,14 +183,14 @@ class results():
             plt.suptitle(index, fontsize=self.title_size)
             plt.show()
 
-    def compare_map(self, func, **kwargs):
+    def compare_map(self, func, suptitle="mAP Comparism", **kwargs):
         if isinstance(self.map, dict):
             for i in range(len(self.map)):
                 func(self.map[self.test_name_list[i]], **kwargs)
-                plt.suptitle("mAP Comparism", fontsize=self.title_size)
+                plt.suptitle(suptitle, fontsize=self.title_size)
         else:
             func(self.map, **kwargs)
-            plt.suptitle("Best mAP Comparism", fontsize=self.title_size)
+            plt.suptitle(suptitle, fontsize=self.title_size)
         plt.show()
 
     def map_improvement(self, base_pos=0, x_label=''):
@@ -262,41 +274,65 @@ class results():
 
 def show():
     csv_name = "con_iou_map_frame.csv"
-    # img sample size experiment
+    
+    
+
+# =============================================================================
+#      img sample size experiment
+# =============================================================================
 #    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
 #    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
 #                      "700_to_750_imgs"]
 
-    # input size experiment
-#    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
-#    test_name_list = ['320', '416', '512', '608']
+# =============================================================================
+#      input size experiment
+# =============================================================================
+    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
+    test_name_list = ['320', '416', '512', '608']
 
-    # batch size experiment
+# =============================================================================
+#      batch size experiment
+# =============================================================================
 #    results_path = "../5Compare/batch_size/2018-12-11_02_12_06.717949/"
 #    test_name_list = ['5', '10', '15', '20']
 
-    # epoch experiment
-    results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
-    part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
-              "700_to_750_imgs"]
-    part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
-    visual = results(results_path, part_a, csv_name, xtra_var=part_b,)
-    visual.compare_map(visual.best_map, sort=False)
+# =============================================================================
+#      epoch experiment
+# =============================================================================
+#    results_path = "../5Compare/epoch_experiment/2018-12-11_19_52_33.777596/"
+#    part_a = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
+#              "700_to_750_imgs"]
+#    part_b = [f"epoch_{x}_" for x in [25, 30, 35, 40]]
+#    visual = results(results_path, part_a, csv_name, xtra_var=part_b,)
+#    visual.compare_map(visual.best_map, sort=False)
+#    visual.compare_map(visual.line_all)
+# %%
+# =============================================================================
+#     individual train experiment
+# =============================================================================
+    results_path = "../5Compare/individual_train/2018-12-14_01_22_17.983703/"
+    test_name_list = load_classes('../4Others/color_ball.names')
+    visual = results(results_path, test_name_list, csv_name, indi_train=True)
+    visual.compare_map(visual.best_map, "Best mAP Comparism", sort=False)
     visual.compare_map(visual.line_all)
-    
-    # conf_loss
+    visual.all_df
+visual.all_df['Orange_ball'].loc[['Orange_ball'],:]
+# =============================================================================
+#      conf_loss
+# =============================================================================
 #    results_path = "../5Compare/conf_lambda/2018-12-12_22_12_37.511263/"
 #    test_name_list = [str(x) for x in range(1, 6)]
 #    visual = results(results_path, test_name_list, csv_name)
 #    visual.compare_map(visual.best_map, sort=False)
 #    visual.compare_map(visual.line_all)
-    
-    
-    
-#    visual = results(results_path, test_name_list, csv_name)
+
+# =============================================================================
+#     general usage
+# =============================================================================
+    visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map)
     visual.map_improvement(x_label='Batch Size')
-    visual.figsize = (12, 10)
+    visual.figsize = (10, 10)
     visual.compare_vis(visual.best_map, only_map=False)
     visual.compare_vis(visual.line_all)
     visual.compare_map(visual.line_all, description='Batch Size=')
@@ -309,6 +345,15 @@ def show():
     visual.heat_map(annotation=True)
 #    con_iou_map_frame(results_path, csv_name)
 
+
+# =============================================================================
+#  to open up the pickle configuration file
+# =============================================================================
+config_name = "exp_config.p"
+with open(results_path + config_name, 'rb') as fp:
+    b = pickle.load(fp)
+    
+    
 def conf_map_frame(iou_conf, conf_list):
     cuda = True
     specific_conf = 0.9
