@@ -12,6 +12,8 @@ from statistics import mode
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import Launch_Functions as lf
+import time
+import stat
 # add this two libraries if you are not using windpws and wish to use mp
 #from itertools import repeat
 #from torch.multiprocessing import Pool
@@ -575,3 +577,35 @@ def resize_all_img(new_w, new_h, from_path, to_path):
             resized_image.save(save_path)
         else:
             raise NameError(f"{save_path} already exists")
+
+
+def keep_latest_weights_only(rootdir):
+    answer = ''
+    while answer not in ['y', 'n']:
+        answer = input("This operation might remove some of your " +
+                       "important documents, are you sure you want to " +
+                       "CONTINUE? [Y/N]").lower()
+        if answer == 'y':
+            for root, subdirs, files in os.walk(rootdir, topdown=False):
+                if len(subdirs):
+                    print(f"subdirs: {subdirs}")
+                    for subdir in subdirs:
+                        path = f"{root}/{subdir}/*.pth"
+                        files = glob.glob(path)
+                        if len(files):
+                            best_file = max(files, key=os.path.getctime)
+                            print(f"this is files {files}")
+                            for file in files:
+                                if file != best_file:
+                                    os.remove(file)
+                        else:
+                            try:
+                                os.rmdir(subdir)
+                            except FileNotFoundError:
+                                continue
+        elif answer == 'n':
+            break
+        else:
+            print("Invalid input!")
+            continue
+

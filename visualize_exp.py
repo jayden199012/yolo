@@ -177,10 +177,11 @@ class results():
                 "RdYlBu", 12), saturation=0.85, order=df.index)
         ssaplot.annotate(ax, message='Float', fontsize=fontsize)
 
-    def compare_vis(self, func, **kwargs):
+    def compare_vis(self, func, suptitle="", **kwargs):
         for index, value in self.all_df.items():
             func(value, **kwargs)
-            plt.suptitle(index, fontsize=self.title_size)
+            plt.suptitle(suptitle + str(index).replace("_*", ""),
+                         fontsize=self.title_size)
             plt.show()
 
     def compare_map(self, func, suptitle="mAP Comparism", **kwargs):
@@ -287,8 +288,8 @@ def show():
 # =============================================================================
 #      input size experiment
 # =============================================================================
-    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
-    test_name_list = ['320', '416', '512', '608']
+#    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
+#    test_name_list = ['320', '416', '512', '608']
 
 # =============================================================================
 #      batch size experiment
@@ -310,13 +311,12 @@ def show():
 # =============================================================================
 #     individual train experiment
 # =============================================================================
-    results_path = "../5Compare/individual_train/2018-12-14_01_22_17.983703/"
-    test_name_list = load_classes('../4Others/color_ball.names')
-    visual = results(results_path, test_name_list, csv_name, indi_train=True)
-    visual.compare_map(visual.best_map, "Best mAP Comparism", sort=False)
-    visual.compare_map(visual.line_all)
-    visual.all_df
-visual.all_df['Orange_ball'].loc[['Orange_ball'],:]
+#    results_path = "../5Compare/individual_train/2018-12-14_01_22_17.983703/"
+#    test_name_list = load_classes('../4Others/color_ball.names')
+#    visual = results(results_path, test_name_list, csv_name, indi_train=True)
+#    visual.compare_map(visual.best_map, "Best mAP Comparism", sort=False)
+#    visual.compare_map(visual.line_all)
+
 # =============================================================================
 #      conf_loss
 # =============================================================================
@@ -325,6 +325,16 @@ visual.all_df['Orange_ball'].loc[['Orange_ball'],:]
 #    visual = results(results_path, test_name_list, csv_name)
 #    visual.compare_map(visual.best_map, sort=False)
 #    visual.compare_map(visual.line_all)
+
+# =============================================================================
+# multi train
+# =============================================================================
+    results_path = "../5Compare/multiple_train/2018-12-15_13_21_49.991421/"
+    test_name_list = [f"_*" for x in range(420, 425)]
+    visual = results(results_path, test_name_list, csv_name)
+    visual.compare_vis(visual.best_map, sort=False,
+                       suptitle='Best mAP Comparism')
+    visual.compare_vis(visual.line_all, suptitle='mAP Comparism')
 
 # =============================================================================
 #     general usage
