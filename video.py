@@ -33,8 +33,8 @@ classes = load_classes('../4Others/color_ball.names')
 #checkpoint_path = "../4TrainingWeights/input_size_expriment/512_seed_425_2018-12-10_21_00_36.422345/2018-12-10_21_23_13.597189_model.pth"
 #checkpoint_path = "../4TrainingWeights/epoch_effect/700_to_750_imgs_seed_422_epoch_35_2018-12-12_10_07_37.617714/2018-12-12_10_25_49.463584_model.pth"
 #checkpoint_path = "../4TrainingWeights/experiment/input_size\700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722\2018-12-09_05_16_05.907534_model.pth"
-checkpoint_path = "../4TrainingWeights/experiment/epoch_experiment/700_to_750_imgs_seed_424_epoch_40_2018-12-12_12_43_27.335460/2018-12-12_13_05_15.085593_model.pth"
-#checkpoint_path = "../4TrainingWeights/2018-11-07_23_13_38.391465/2018-11-08_03_43_34.979783_model.pth"
+#checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_424_2018-12-15_14_43_08.124629/2018-12-15_15_03_08.497061_model.pth"
+checkpoint_path = "../4TrainingWeights/experiment/input_size/700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722/2018-12-09_05_16_05.907534_model.pth"
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint)
 for params in model.parameters():
@@ -44,8 +44,8 @@ if cuda:
 #    torch.set_num_threads(8)
 
 
-model.net["height"] = 416
-model.net["width"] = 416
+model.net["height"] = 608
+model.net["width"] = 608
 inp_dim = model.net["height"]
 transform = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406],
                                                      [0.229, 0.224, 0.225])])
