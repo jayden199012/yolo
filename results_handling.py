@@ -4,11 +4,7 @@ import os
 import numpy as np
 import glob
 import pandas as pd
-from PIL import Image
-from statistics import mode
-import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
-import Launch_Functions as lf
+
 
 
 def keep_latest_weights_only(rootdir):
@@ -96,25 +92,25 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
     return results_df
 
 
-rootdir = '../5Compare/'
-rootdir = '../4/input_size/2018-12-10_18_13_42.903424/'
-weight_dir = '../4TrainingWeights/experiment/'
-rootdir = '../4TrainingWeights/coNf_loss/1_seed_424_*'
-files = glob.glob(rootdir)[-1]
-
-get_top_n_results(rootdir, n=10, weight_dir=weight_dir)
-
-
-
-for event in tf.train.summary_iterator("../4TrainingWeights/epoch_effect/700_to_750_imgs_seed_422_epoch_35_2018-12-12_10_07_37.617714/events.out.tfevents.1544627258.DESKTOP-TM1BVCG"):
-    for v in event.summary.value:
-        if v.tag == 'best_conf':
-             print(v.simple_value)
-        if v.tag == 'best_map':
-             print(event.step)
-             print(v.simple_value)
-l = [12,12,344]
-np.argmax(l)
-r = '../5Compare/batch_size'
-
-r.split('/')[-1]
+#rootdir = '../5Compare/'
+#rootdir = '../4/input_size/2018-12-10_18_13_42.903424/'
+#weight_dir = '../4TrainingWeights/experiment/'
+#rootdir = '../4TrainingWeights/coNf_loss/1_seed_424_*'
+#files = glob.glob(rootdir)[-1]
+#
+#get_top_n_results(rootdir, n=10, weight_dir=weight_dir)
+#
+#
+#
+#for event in tf.train.summary_iterator("../4TrainingWeights/epoch_effect/700_to_750_imgs_seed_422_epoch_35_2018-12-12_10_07_37.617714/events.out.tfevents.1544627258.DESKTOP-TM1BVCG"):
+#    for v in event.summary.value:
+#        if v.tag == 'best_conf':
+#             print(v.simple_value)
+#        if v.tag == 'best_map':
+#             print(event.step)
+#             print(v.simple_value)
+#l = [12,12,344]
+#np.argmax(l)
+#r = '../5Compare/batch_size'
+#
+#r.split('/')[-1]

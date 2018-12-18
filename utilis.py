@@ -580,7 +580,3 @@ def resize_all_img(new_w, new_h, from_path, to_path):
 
 
          
-    
-#rootdir = '../5Compare/'
-#n = 20
-#top_reuslts = get_top_n_results(rootdir)

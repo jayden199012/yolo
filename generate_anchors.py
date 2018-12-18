@@ -44,8 +44,8 @@ def write_anchors_to_file(centroids,X,anchor_file):
     print(anchors.shape)
 
     for i in range(anchors.shape[0]):
-        anchors[i][0]*=width_in_cfg_file/32.
-        anchors[i][1]*=height_in_cfg_file/32.
+        anchors[i][0]*=width_in_cfg_file
+        anchors[i][1]*=height_in_cfg_file
          
 
     widths = anchors[:,0]

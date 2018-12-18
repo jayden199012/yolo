@@ -325,8 +325,8 @@ class yolo_v3(nn.Module):
         for i in range(len(self.module_list)):
             module_type = self.blocks[i]["type"]
     
-            #If module_type is convolutional load weights
-            #Otherwise ignore.
+            # If module_type is convolutional load weights
+            # Otherwise ignore.
             
             if module_type == "convolutional":
                 model = self.module_list[i]
@@ -399,10 +399,10 @@ class yolo_v3(nn.Module):
                         #Finally copy the data
                         conv.bias.data.copy_(conv_biases)
 
-                #Let us load the weights for the Convolutional layers
+                # Let us load the weights for the Convolutional layers
                 num_weights = conv.weight.numel()
                 if i in before_yolo_layer:
-                    #Do the same as above for weights
+                    # Do the same as above for weights
                     conv_weights = torch.zeros(num_weights, dtype=torch.float,
                                               requires_grad=True)
                     ptr = ptr + 255

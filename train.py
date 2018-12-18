@@ -18,7 +18,7 @@ from tensorboardX import SummaryWriter
 
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
-          conf_list, classes, iou_conf, point_confidence=True):
+          conf_list, classes, iou_conf, point_confidence=True, loop_epoch=20):
     config["global_step"] = 0
 #    map_counter = 0
 
@@ -42,6 +42,8 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
     logging.info("Start training.")
     for epoch in range(config["epochs"]):
         print("this is epoch :{}".format(epoch))
+        if loop_epoch and epoch > loop_epoch:
+            point_confidence = False
         for step, samples in enumerate(train_loader):
             if cuda:
                 images, labels = samples["image"].to('cuda'), samples["label"]

@@ -1,4 +1,4 @@
-from utilis import move_images, prep_labels, load_classes, parse_cfg
+from utilis import load_classes, parse_cfg
 from yolo_v3 import yolo_v3
 from train import main
 import random
@@ -21,7 +21,7 @@ def compare():
         os.makedirs(compare_path)
     config_name = "exp_config.p"
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
-    seed_range = range(420, 425)
+    seed_range = range(1212, 1217)
     classes = load_classes('../4Others/color_ball.names')
     cfg_path = "../4Others/color_ball.cfg"
     blocks = parse_cfg(cfg_path)
@@ -67,7 +67,8 @@ def compare():
 
 
 if __name__ == '__main__':
-    torch.backends.cudnn.enabled = False
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
     seed = 1
     random.seed(seed)
     np.random.seed(seed)
