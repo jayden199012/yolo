@@ -5,7 +5,6 @@ import random
 import numpy as np
 import pandas as pd
 import pickle
-import shutil
 import os
 import time
 import torch
@@ -37,8 +36,6 @@ def compare():
                            cust_train_zero=True)
         x_start = time.time()
         random.seed(seed)
-        if not os.path.exists(to_path):
-            os.makedirs(to_path)
         sub_name = f"_seed_{seed}_"
         # Original label names
         label_csv_mame = '../color_balls/label.csv'
@@ -59,7 +56,6 @@ def compare():
 
         map_frame.to_csv(f"{compare_path+sub_name}.csv",
                          index=True)
-        shutil.rmtree(to_path)
         time_taken_df.loc[0, seed] = time.time() - x_start
         # if you change the csv_name, pls change accordingly in the
         # visualization part
@@ -67,8 +63,7 @@ def compare():
 
 
 if __name__ == '__main__':
-    torch.backends.cudnn.enabled = True
-    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.enabled = False
     seed = 1
     random.seed(seed)
     np.random.seed(seed)
