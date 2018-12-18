@@ -18,7 +18,7 @@ from tensorboardX import SummaryWriter
 
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
-          conf_list, classes, iou_conf):
+          conf_list, classes, iou_conf, point_confidence=True):
     config["global_step"] = 0
 #    map_counter = 0
 
@@ -89,7 +89,8 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                     # results consist best_map, best_ap, best_conf,
                     # specific_conf_map, specific_conf_ap
                     map_results = get_map(model, test_loader, cuda, conf_list,
-                                          iou_conf, classes, train=True)
+                                          iou_conf, classes,
+                                          train=point_confidence)
                     map_results_names = ["best_map", "best_ap", "best_conf",
                                          "specific_conf_map",
                                          "specific_conf_ap"]
@@ -137,7 +138,7 @@ def worker_init_fn(worker_id):
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
          cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name='',
-         selected_cls=False):
+         selected_cls=False, return_csv=False):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     config = model.net
@@ -205,6 +206,9 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = train(model, optimizer, cuda, config, train_loader,
                           test_loader, conf_list, classes, iou_conf)
+    if return_csv:
+        map_frame.to_csv(f"{config['sub_working_dir']}_final_performance.csv",
+                         index=True)
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame
 
