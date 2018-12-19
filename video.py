@@ -17,18 +17,36 @@ cuda = True
 images = "../1RawData/"
 det = "../2ProcessedData/"
 batch_size = 1
-confidence = float(0.5)
+confidence = float(0.275)
 nms_thesh = float(0.40)
 start = 0
 num_classes = 4
 colors = pkl.load(open("../4Others/pallete", "rb"))
-#cfg_path = "../4Others/yolov3.cfg"
+# one anchor 
+#cfg_path = "../4Others/color_ball_one_anchor.cfg"
+
+# 3 anchors
 cfg_path = "../4Others/color_ball.cfg"
 blocks = parse_cfg(cfg_path)
 model = yolo_v3(blocks)
 classes = load_classes('../4Others/color_ball.names')
+
+# 416
+
 #checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_424_2018-12-15_14_43_08.124629/2018-12-15_15_03_08.497061_model.pth"
+
+# 512
+
 checkpoint_path = "../4TrainingWeights/experiment/input_size/700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722/2018-12-09_05_16_05.907534_model.pth"
+
+
+# 608
+
+#checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_1218_2018-12-18_18_43_17.797231/2018-12-18_19_20_48.644387_model.pth"
+#checkpoint_path = "../4TrainingWeights/experiment/input_size/700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722/2018-12-09_05_16_05.907534_model.pth"
+
+
+
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint)
 for params in model.parameters():
@@ -37,9 +55,18 @@ if cuda:
     model = model.cuda()
 #    torch.set_num_threads(8)
 
+## 608
+#model.net["height"] = 608
+#model.net["width"] = 608
+#
+# 512
+model.net["height"] = 512
+model.net["width"] = 512
 
-model.net["height"] = 608
-model.net["width"] = 608
+## 416
+#model.net["height"] = 416
+#model.net["width"] = 416
+
 inp_dim = model.net["height"]
 transform = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406],
                                                      [0.229, 0.224, 0.225])])
@@ -60,8 +87,13 @@ assert inp_dim > 32
 
 
 cap = cv2.VideoCapture(0)
-cap.set(3, 416)
-cap.set(4, 416)
+# 480 p 
+#cap.set(3, 1280)
+
+# 720 p 
+cap.set(3, 1280)
+cap.get(3)
+cap.get(4)
 fps_list = []
 add = False
 count_time = 10
