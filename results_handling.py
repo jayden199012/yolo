@@ -37,28 +37,23 @@ def keep_latest_weights_only(rootdir):
 
 
 def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
-    # count is used to locate the rows for the output data frame
     count = 0
     if csv:
         results_df = pd.DataFrame(columns=['csv_name', 'weights_path',
                                            'max_mAP', 'confidence'])
     else:
-        results_df = pd.DataFrame(columns=['weights_path', 'max_mAP',
-                                           'global_step', 'confidence',
-                                           'pth_position'])
+        results_df = pd.DataFrame(columns=['weights_path',
+                                           'max_mAP', 'confidence'])
     for root, subdirs, files in os.walk(rootdir, topdown=False):
         if len(subdirs):
             for subdir in subdirs:
-                # pulling information from csv files
                 if csv:
                     path = f"{root}/{subdir}/*_.csv"
-                # pulling information from tf event file
                 else:
                     path = f"{root}/{subdir}/events.out.tfevents*"
                 files = glob.glob(path)
                 if len(files):
                     for file in files:
-                        # handle from output csv
                         if csv:
                             df = pd.read_csv(file, index_col=0)
                             max_map = df.max(axis=1).iloc[-1]
@@ -66,52 +61,16 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                                                     df.idxmax(1).iloc[-1]), 3)
                             
                             results_df.loc[count, 'csv_name'] = file
-                            # if weight_dir is given, we will look for
-                            # the weight pth file from the weight directory
                             if weight_dir:
-                                # get the sub path, usually the expriment name
                                 sub_p = root.split('/')[-1]
-                                # get the name before the file type
                                 sub_f = file.split('.')[0]
                                 weights_path = f"{weight_dir+sub_p}/{sub_f}*"
+                                print(weights_path)
                                 weights_path = glob.glob(weights_path)[-1]
                                 weights_path = glob.glob(
                                         weights_path+"/*.pth")[-1]
                                 results_df.loc[count, 'weights_path'] =\
-                                    weights_path.replace('\\', '/')            
-                        # handle the tf events
-                        else:
-                            results_ = {'map': [],
-                                        'confidence': [],
-                                        'position': [],
-                                        'global_steps': []}
-                            print(f"this is file :{file}")
-                            for events in tf.train.summary_iterator(file):
-                                for v in events.summary.value:
-                                    print(f"all v tags :{v.tag}")
-                                    if v.tag == 'best_conf':
-                                        results_['confidence'].append(
-                                                v.simple_value)
-                                    if v.tag == 'best_map':
-                                        print(f"best map {v.simple_value}")
-                                        results_['map'].append(
-                                                v.simple_value)
-                                        results_['global_steps'].append(
-                                                events.step)
-                            try:
-                                best_map_pos = np.argmax(results_['map'])
-                            except ValueError:
-                                continue
-                            results_df.loc[count,
-                                           'weights_path'] = file
-                            results_df.loc[count,
-                                           'pth_position'] = best_map_pos
-                            results_df.loc[count,
-                                           'global_step'] =\
-                                results_['global_steps'][best_map_pos]
-                            max_map = np.max(results_['map'])
-                            confidence = results_['confidence'][
-                                         best_map_pos]
+                                    weights_path.replace('\\', '/')
                         results_df.loc[count, 'max_mAP'] = max_map
                         results_df.loc[count, 'confidence'] = confidence
                         count += 1
@@ -133,12 +92,25 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
     return results_df
 
 
-# csv
-rootdir = '../5Compare/'
-
-# from tf events
-rootdir = '../4TrainingWeights/experiment/'
-
-weight_dir = '../4TrainingWeights/experiment/'
-
-get_top_n_results(rootdir, n=100, csv=True, weight_dir=weight_dir)
+#rootdir = '../5Compare/'
+#rootdir = '../4/input_size/2018-12-10_18_13_42.903424/'
+#weight_dir = '../4TrainingWeights/experiment/'
+#rootdir = '../4TrainingWeights/coNf_loss/1_seed_424_*'
+#files = glob.glob(rootdir)[-1]
+#
+#get_top_n_results(rootdir, n=10, weight_dir=weight_dir)
+#
+#
+#
+#for event in tf.train.summary_iterator("../4TrainingWeights/epoch_effect/700_to_750_imgs_seed_422_epoch_35_2018-12-12_10_07_37.617714/events.out.tfevents.1544627258.DESKTOP-TM1BVCG"):
+#    for v in event.summary.value:
+#        if v.tag == 'best_conf':
+#             print(v.simple_value)
+#        if v.tag == 'best_map':
+#             print(event.step)
+#             print(v.simple_value)
+#l = [12,12,344]
+#np.argmax(l)
+#r = '../5Compare/batch_size'
+#
+#r.split('/')[-1]

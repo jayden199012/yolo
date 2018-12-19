@@ -118,7 +118,6 @@ class yolo_v3(nn.Module):
         th_pred = prediction[:, :, :, :, 3]
 #        print(tw_pred)
 
-
         # object confidence
         con_pred = torch.sigmoid(prediction[:, :, :, :, 4])
         # object confidence
@@ -209,7 +208,7 @@ class yolo_v3(nn.Module):
                                                     )).unsqueeze(0)
 
                 # transform anchor box to torch tensor
-                # returns a num_anchors * 4 tensor
+                # returns a 3 * 4 tensor
                 anchor_box = torch.cat((torch.zeros(self.num_anchors, 2),
                                         torch.FloatTensor(anchors)), 1)
 
