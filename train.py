@@ -235,10 +235,11 @@ if __name__ == "__main__":
     root_dir = "../1TrainData"
     classes = load_classes('../4Others/color_ball.names')
     conf_list = np.arange(start=0.2, stop=0.95, step=0.025)
-    cfg_path = "../4Others/color_ball.cfg"
+    cfg_path = "../4Others/color_ball_one_anchor.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
     
+

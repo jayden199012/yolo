@@ -17,24 +17,36 @@ cuda = True
 images = "../1RawData/"
 det = "../2ProcessedData/"
 batch_size = 1
-confidence = float(0.5)
+confidence = float(0.35)
 nms_thesh = float(0.40)
 start = 0
 num_classes = 4
 colors = pkl.load(open("../4Others/pallete", "rb"))
-#cfg_path = "../4Others/yolov3.cfg"
-cfg_path = "../4Others/color_ball.cfg"
+# one anchor 
+#cfg_path = "../4Others/color_ball_one_anchor.cfg"
+
+# 3 anchors
+cfg_path = "../4Others/color_ball_one_anchor.cfg"
 blocks = parse_cfg(cfg_path)
 model = yolo_v3(blocks)
 classes = load_classes('../4Others/color_ball.names')
-#model.load_weights("../4Weights/yolov3.weights")
-#checkpoint_path = "../4TrainingWeights/2018-11-07_02_53_39.276476/2018-11-07_04_46_47.912754_model.pth"
-#checkpoint_path = "../4TrainingWeights/input_size_expriment/608_seed_427_2018-12-10_23_31_10.005616/2018-12-10_23_58_55.119565_model.pth"
-#checkpoint_path = "../4TrainingWeights/input_size_expriment/512_seed_425_2018-12-10_21_00_36.422345/2018-12-10_21_23_13.597189_model.pth"
-#checkpoint_path = "../4TrainingWeights/epoch_effect/700_to_750_imgs_seed_422_epoch_35_2018-12-12_10_07_37.617714/2018-12-12_10_25_49.463584_model.pth"
-#checkpoint_path = "../4TrainingWeights/experiment/input_size\700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722\2018-12-09_05_16_05.907534_model.pth"
+
+# 416
+
 #checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_424_2018-12-15_14_43_08.124629/2018-12-15_15_03_08.497061_model.pth"
-checkpoint_path = "../4TrainingWeights/experiment/input_size/700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722/2018-12-09_05_16_05.907534_model.pth"
+
+# 512
+
+checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_425_2018-12-19_00_32_29.569630/2018-12-19_00_35_55.883400_model.pth"
+
+
+# 608
+
+#checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_1218_2018-12-18_18_43_17.797231/2018-12-18_19_20_48.644387_model.pth"
+#checkpoint_path = "../4TrainingWeights/experiment/input_size/700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722/2018-12-09_05_16_05.907534_model.pth"
+
+
+
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint)
 for params in model.parameters():
@@ -43,9 +55,18 @@ if cuda:
     model = model.cuda()
 #    torch.set_num_threads(8)
 
+## 608
+#model.net["height"] = 608
+#model.net["width"] = 608
+#
+# 512
+model.net["height"] = 512
+model.net["width"] = 512
 
-model.net["height"] = 608
-model.net["width"] = 608
+## 416
+#model.net["height"] = 416
+#model.net["width"] = 416
+
 inp_dim = model.net["height"]
 transform = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406],
                                                      [0.229, 0.224, 0.225])])
@@ -66,8 +87,13 @@ assert inp_dim > 32
 
 
 cap = cv2.VideoCapture(0)
-cap.set(3, 416)
-cap.set(4, 416)
+# 480 p 
+#cap.set(3, 1280)
+
+# 720 p 
+cap.set(3, 1280)
+cap.get(3)
+cap.get(4)
 fps_list = []
 add = False
 count_time = 10
@@ -95,11 +121,11 @@ while cap.isOpened():
         if type(output) == int:
             cv2.imshow("frame", frame)
             fps = (1 / (time.time() - start))
-            print(f"FPS of the video is {fps:5.4f}")
+#            print(f"FPS of the video is {fps:5.4f}")
             if add:
                 fps_list.append(fps)
                 if (time.time() - count_start_time) > count_time:
-                    print(f"avg_fps: {np.mean(fps_list):5.4f}")
+#                    print(f"avg_fps: {np.mean(fps_list):5.4f}")
                     break
             key = cv2.waitKey(1) & 0xFF
             if key == ord('b'):
@@ -127,7 +153,7 @@ while cap.isOpened():
         cv2.imshow("frame", frame)
         key = cv2.waitKey(1) & 0xff
         fps = 1 / (time.time() - start)
-        print(f"FPS of the video is {fps:5.4f}")
+#        print(f"FPS of the video is {fps:5.4f}")
         if add:
             fps_list.append(fps)
             if (time.time() - count_start_time) > count_time:

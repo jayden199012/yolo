@@ -151,7 +151,8 @@ def shortcut_layer_handling(module, index, layer, layer_type_dic):
 def yolo_layer_handling(module, index, layer, layer_type_dic):
     anchor_index = [int(x) for x in (layer["mask"].split(","))]
     anchors = re.split(',  |,', layer["anchors"])
-    anchors = np.reshape([float(x) for x in anchors], (9, 2))
+    num_anchors = int(len(anchors)/2)
+    anchors = np.reshape([float(x) for x in anchors], (num_anchors, 2))
     anchors = anchors[anchor_index]
     num_anchors = len(anchors)
     classes = int(layer["classes"])

@@ -9,8 +9,8 @@ import os
 import random 
 import pandas as pd
 
-width_in_cfg_file = 416.
-height_in_cfg_file = 416.
+width_in_cfg_file = 512.
+height_in_cfg_file = 512.
 
 def IOU(x,centroids):
     similarities = []
@@ -44,8 +44,8 @@ def write_anchors_to_file(centroids,X,anchor_file):
     print(anchors.shape)
 
     for i in range(anchors.shape[0]):
-        anchors[i][0]*=width_in_cfg_file
-        anchors[i][1]*=height_in_cfg_file
+        anchors[i][0]*=width_in_cfg_file /32
+        anchors[i][1]*=height_in_cfg_file /32
          
 
     widths = anchors[:,0]
@@ -65,7 +65,6 @@ def write_anchors_to_file(centroids,X,anchor_file):
 def kmeans(X,centroids,eps,anchor_file):
     
     N = X.shape[0]
-    iterations = 0
     k,dim = centroids.shape
     prev_assignments = np.ones(N)*(-1)    
     iter = 0
@@ -103,9 +102,9 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('-filelist', default = '../color_balls/label.csv', 
                         help='path to filelist\n' )
-    parser.add_argument('-output_dir', default = '../color_balls/', type = str, 
+    parser.add_argument('-output_dir', default = '../4Others/', type = str, 
                         help='Output anchor directory\n' )  
-    parser.add_argument('-num_clusters', default = 9, type = int, 
+    parser.add_argument('-num_clusters', default = 3, type = int, 
                         help='number of clusters\n' )  
 
    

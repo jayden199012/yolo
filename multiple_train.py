@@ -20,9 +20,9 @@ def compare():
         os.makedirs(compare_path)
     config_name = "exp_config.p"
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
-    seed_range = range(1212, 1217)
+    seed_range = range(1218, 1221)
     classes = load_classes('../4Others/color_ball.names')
-    cfg_path = "../4Others/color_ball.cfg"
+    cfg_path = "../4Others/color_ball_one_anchor.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)

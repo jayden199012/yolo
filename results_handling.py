@@ -132,6 +132,7 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
             results_df.to_csv(out_name)
     return results_df
 
+
 # csv
 rootdir = '../5Compare/'
 
@@ -141,4 +142,3 @@ rootdir = '../4TrainingWeights/experiment/'
 weight_dir = '../4TrainingWeights/experiment/'
 
 get_top_n_results(rootdir, n=100, csv=True, weight_dir=weight_dir)
-
