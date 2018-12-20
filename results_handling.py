@@ -45,7 +45,7 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
     else:
         results_df = pd.DataFrame(columns=['weights_path', 'max_mAP',
                                            'global_step', 'confidence',
-                                           'pth_position'])
+                                           'pth_position', 'true_path'])
     for root, subdirs, files in os.walk(rootdir, topdown=False):
         if len(subdirs):
             for subdir in subdirs:
@@ -88,12 +88,10 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                             print(f"this is file :{file}")
                             for events in tf.train.summary_iterator(file):
                                 for v in events.summary.value:
-                                    print(f"all v tags :{v.tag}")
                                     if v.tag == 'best_conf':
                                         results_['confidence'].append(
                                                 v.simple_value)
                                     if v.tag == 'best_map':
-                                        print(f"best map {v.simple_value}")
                                         results_['map'].append(
                                                 v.simple_value)
                                         results_['global_steps'].append(
@@ -102,8 +100,15 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                                 best_map_pos = np.argmax(results_['map'])
                             except ValueError:
                                 continue
+                            weight_paths = glob.glob(f"{root}/{subdir}/*.pth")
+                            try:
+                                weights_path = weight_paths[best_map_pos]
+                                results_df.loc[count, 'true_path'] = 1
+                            except IndexError:
+                                weights_path = weight_paths[-1]
+                                results_df.loc[count, 'true_path'] = 0
                             results_df.loc[count,
-                                           'weights_path'] = file
+                                           'weights_path'] = weights_path
                             results_df.loc[count,
                                            'pth_position'] = best_map_pos
                             results_df.loc[count,
@@ -132,13 +137,16 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
             results_df.to_csv(out_name)
     return results_df
 
+# %%
+if __name__ == '__main__':
+    # csv
+#    rootdir = '../5Compare/'
 
-# csv
-rootdir = '../5Compare/'
+    # from tf events
+    rootdir = '../4TrainingWeights/experiment/'
 
-# from tf events
-rootdir = '../4TrainingWeights/experiment/'
+    weight_dir = '../4TrainingWeights/experiment/'
 
-weight_dir = '../4TrainingWeights/experiment/'
+    get_top_n_results(rootdir, n=100, csv=False, weight_dir=weight_dir)
 
-get_top_n_results(rootdir, n=100, csv=True, weight_dir=weight_dir)
+

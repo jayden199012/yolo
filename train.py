@@ -15,7 +15,7 @@ from evaluate import eval_score, get_map
 from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
 from tensorboardX import SummaryWriter
-
+import sys
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
           conf_list, classes, iou_conf, loop_conf=False, loop_epoch=20):
@@ -218,8 +218,6 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
                          index=True)
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame
-
-# type(model.net["height"])
 
 
 if __name__ == "__main__":

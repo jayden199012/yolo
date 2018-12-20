@@ -17,7 +17,7 @@ cuda = True
 images = "../1RawData/"
 det = "../2ProcessedData/"
 batch_size = 1
-confidence = float(0.35)
+confidence = float(0.5)
 nms_thesh = float(0.40)
 start = 0
 num_classes = 4
@@ -88,10 +88,11 @@ assert inp_dim > 32
 
 cap = cv2.VideoCapture(0)
 # 480 p 
-#cap.set(3, 1280)
+cap.set(3, 800)
 
 # 720 p 
-cap.set(3, 1280)
+#cap.set(3, 1280)
+
 cap.get(3)
 cap.get(4)
 fps_list = []

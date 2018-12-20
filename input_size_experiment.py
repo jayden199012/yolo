@@ -10,9 +10,9 @@ import time
 import torch
 import logging
 import datetime
+from generate_anchors import set_anchors_to_model
 
 
-# label_name = '../1TestData/label.csv'
 def compare():
     date_time_now = str(
         datetime.datetime.now()).replace(" ", "_").replace(":", "_")
@@ -20,9 +20,10 @@ def compare():
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
     config_name = "exp_config.p"
+    num_anchors = 3
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
     seed_range = range(424, 428)
-    input_sizes = [320, 416, 512, 608]
+    input_sizes = [448, 480]
     classes = load_classes('../4Others/color_ball.names')
     cfg_path = "../4Others/color_ball.cfg"
     blocks = parse_cfg(cfg_path)
@@ -44,6 +45,8 @@ def compare():
         # now parse the size into the model
         model.net['width'] = input_size
         model.net['height'] = input_size
+        set_anchors_to_model(model, num_anchors, label_csv_mame, input_size,
+                             input_size)
         for index, seed in enumerate(seed_range):
             model.load_weights("../4Weights/yolov3.weights",
                                cust_train_zero=True)
@@ -88,7 +91,6 @@ if __name__ == '__main__':
                                   {time_taken%60} minutes : \
                                   {time_taken%60} seconds!")
 
-
-# to open up the pickle configuration file
-# with open(compare_path + config_name, 'rb') as fp:
-#    b = pickle.load(fp)
+    # to open up the pickle configuration file
+    # with open(compare_path + config_name, 'rb') as fp:
+    #    b = pickle.load(fp)
