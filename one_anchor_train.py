@@ -4,7 +4,6 @@ from train import main
 import random
 import numpy as np
 import pandas as pd
-import pickle
 import os
 import time
 import torch
@@ -16,16 +15,15 @@ from generate_anchors import set_anchors_to_model
 def compare():
     date_time_now = str(
         datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    compare_path = f"../5Compare/input_size/{date_time_now}/"
+    compare_path = f"../5Compare/one_anchor/{date_time_now}/"
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
-    config_name = "exp_config.p"
     num_anchors = 3
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
-    seed_range = range(424, 428)
-    input_sizes = [448, 480]
+    seed_range = list(range(425, 428))
+    input_sizes = [512]
     classes = load_classes('../4Others/color_ball.names')
-    cfg_path = "../4Others/color_ball.cfg"
+    cfg_path = "../4Others/color_ball_one_anchor.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
@@ -34,12 +32,8 @@ def compare():
     img_txt_path = "../color_balls/*.txt"
     root_dir = "../color_balls"
     # save the list of input sizes into the conf dictionary
-    model.net['width'] = input_sizes
-    model.net['height'] = input_sizes
-
-    # save the dictionary into local pickle file
-    with open(compare_path + config_name, "wb") as fp:
-        pickle.dump(model.net, fp, protocol=pickle.HIGHEST_PROTOCOL)
+    model.net['widths'] = input_sizes
+    model.net['heights'] = input_sizes
     time_taken_df = pd.DataFrame(columns=list(seed_range))
     for input_size in input_sizes:
         # now parse the size into the model
@@ -92,7 +86,7 @@ if __name__ == '__main__':
                                   {time_taken%60} seconds!")
 
 #   to open up the pickle configuration file
-    compare_path ='../5Compare/one_anchor_input_size_608/2018-12-18_18_43_15.712088/'
-    config_name = 'exp_config.p'
-    with open(compare_path + config_name, 'rb') as fp:
-        b = pickle.load(fp)
+#    compare_path ='../5Compare/one_anchor_input_size_608/2018-12-18_18_43_15.712088/'
+#    config_name = 'exp_config.p'
+#    with open(compare_path + config_name, 'rb') as fp:
+#        b = pickle.load(fp)

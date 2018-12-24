@@ -140,13 +140,14 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
 # %%
 if __name__ == '__main__':
     # csv
-#    rootdir = '../5Compare/'
+    rootdir = '../5Compare/'
 
     # from tf events
-    rootdir = '../4TrainingWeights/experiment/'
+#    rootdir = '../4TrainingWeights/experiment/'
 
     weight_dir = '../4TrainingWeights/experiment/'
 
-    get_top_n_results(rootdir, n=100, csv=False, weight_dir=weight_dir)
+#    get_top_n_results(rootdir, n=20, csv=True, weight_dir=weight_dir)
+    get_top_n_results(rootdir,  csv=True, weight_dir=weight_dir)
 
 

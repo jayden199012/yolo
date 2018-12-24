@@ -73,6 +73,7 @@ class results():
                 read_files = glob.glob(test_name)
                 count = 0
                 for file in read_files:
+                    print(f"this is file :{file}")
                     df_ = pd.read_csv(file, index_col=0)
                     df_.columns = [np.round(np.float(x),
                                             3) for x in df_.columns]
@@ -281,17 +282,22 @@ def show():
 # =============================================================================
 #      img sample size experiment
 # =============================================================================
-#    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
+    results_path = "../5Compare/img_size/2018-12-08_21_45_38.145340/"
 #    test_name_list = ["250_to_300_imgs", "400_to_450_imgs", "550_to_600_imgs",
 #                      "700_to_750_imgs"]
 
 # =============================================================================
 #      input size experiment
 # =============================================================================
-#    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
-#    test_name_list = ['320', '416', '512', '608']
-
-# =============================================================================
+    results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
+    test_name_list = ['320', '416', '512', '608']
+    test_name_list = ['512']
+    visual = results(results_path, test_name_list, csv_name)
+    visual.figsize = (10, 10)
+    visual.compare_vis(visual.line_all, suptitle='Three anchors with input size ')
+    visual.compare_vis(visual.best_map, sort=False,
+                       suptitle='Three anchors with input size ')
+#    =============================================================================
 #      batch size experiment
 # =============================================================================
 #    results_path = "../5Compare/batch_size/2018-12-11_02_12_06.717949/"
@@ -330,12 +336,30 @@ def show():
 # multi train
 # =============================================================================
     results_path = "../5Compare/multiple_train/2018-12-15_13_21_49.991421/"
-    test_name_list = [f"_*" for x in range(420, 425)]
+    test_name_list = [f"_*{x}" for x in range(420, 425)]
     visual = results(results_path, test_name_list, csv_name)
     visual.compare_vis(visual.best_map, sort=False,
                        suptitle='Best mAP Comparism')
     visual.compare_vis(visual.line_all, suptitle='mAP Comparism')
-
+# =============================================================================
+# compare 608 one anchor 
+# =============================================================================
+    results_path = "../5Compare/one_anchor_input_size_608/2018-12-18_22_01_50.694304/"
+    test_name_list = [f"_" for x in range(420, 425)]
+    visual = results(results_path, test_name_list, csv_name)
+    visual.compare_vis(visual.best_map, sort=False,
+                       suptitle='One anchor with input size 608 ')
+    visual.compare_vis(visual.line_all, suptitle='One anchor with input size 608 ')
+# =============================================================================
+# compare 512 one anchor 
+# =============================================================================
+    results_path = "../5Compare/one_anchor_input_size_512/2018-12-19_00_10_35.035996/"
+    test_name_list = [f"_" for x in range(420, 425)]
+    visual = results(results_path, test_name_list, csv_name)
+    visual.figsize = (10, 10)
+    visual.compare_vis(visual.best_map, sort=False,
+                       suptitle='One anchor with input size 512 ')
+    visual.compare_vis(visual.line_all, suptitle='One anchor with input size 512 ')
 # =============================================================================
 #     general usage
 # =============================================================================
@@ -421,3 +445,4 @@ if __name__ == '__main__':
         compare_path = "../5Compare/"
         csv_name = "con_iou_map_frame.csv"
         con_iou_map_frame(compare_path, csv_name)
+

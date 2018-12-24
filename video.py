@@ -17,7 +17,7 @@ cuda = True
 images = "../1RawData/"
 det = "../2ProcessedData/"
 batch_size = 1
-confidence = float(0.5)
+confidence = float(0.4)
 nms_thesh = float(0.40)
 start = 0
 num_classes = 4
@@ -33,7 +33,8 @@ classes = load_classes('../4Others/color_ball.names')
 
 # 416
 
-#checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_424_2018-12-15_14_43_08.124629/2018-12-15_15_03_08.497061_model.pth"
+checkpoint_path = "../4TrainingWeights/experiment/one_anchor/480_seed_427_2018-12-19_22_02_06.032829/2018-12-19_22_26_13.738629_model.pth"
+
 
 # 512
 
@@ -60,8 +61,8 @@ if cuda:
 #model.net["width"] = 608
 #
 # 512
-model.net["height"] = 512
-model.net["width"] = 512
+model.net["height"] = 448
+model.net["width"] = 448
 
 ## 416
 #model.net["height"] = 416
