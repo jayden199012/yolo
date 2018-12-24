@@ -15,10 +15,10 @@ from evaluate import eval_score, get_map
 from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
 from tensorboardX import SummaryWriter
-
+import sys
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
-          conf_list, classes, iou_conf, point_confidence=True, loop_epoch=20):
+          conf_list, classes, iou_conf, loop_conf=False, loop_epoch=20):
     config["global_step"] = 0
 #    map_counter = 0
 
@@ -37,13 +37,14 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                         config["pretrain_snapshot"]))
         state_dict = torch.load(config["pretrain_snapshot"])
         model.load_state_dict(state_dict)
-
+    map_results_names = ["best_map", "best_ap", "best_conf",
+                         "specific_conf_map", "specific_conf_ap"]
     # Start the training loop
     logging.info("Start training.")
     for epoch in range(config["epochs"]):
         print("this is epoch :{}".format(epoch))
         if loop_epoch and epoch > loop_epoch:
-            point_confidence = False
+            loop_conf = True
         for step, samples in enumerate(train_loader):
             if cuda:
                 images, labels = samples["image"].to('cuda'), samples["label"]
@@ -92,10 +93,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                     # specific_conf_map, specific_conf_ap
                     map_results = get_map(model, test_loader, cuda, conf_list,
                                           iou_conf, classes,
-                                          train=point_confidence)
-                    map_results_names = ["best_map", "best_ap", "best_conf",
-                                         "specific_conf_map",
-                                         "specific_conf_ap"]
+                                          train=True, loop_conf=loop_conf)
                     for index, mr_name in enumerate(map_results_names):
                         try:
                             config["tensorboard_writer"].add_scalar(
@@ -118,6 +116,13 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = get_map(model, test_loader, cuda, conf_list, iou_conf,
                             classes, train=False, loop_conf=True)
+    for index, mr_name in enumerate(map_results_names):
+        try:
+            config["tensorboard_writer"].add_scalar(
+                    mr_name, map_results[index],
+                    config["global_step"])
+        except AttributeError:
+            continue
     # model.train(True)
     logging.info("Bye~")
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
@@ -214,8 +219,6 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame
 
-# type(model.net["height"])
-
 
 if __name__ == "__main__":
     seed = 1
@@ -230,9 +233,11 @@ if __name__ == "__main__":
     root_dir = "../1TrainData"
     classes = load_classes('../4Others/color_ball.names')
     conf_list = np.arange(start=0.2, stop=0.95, step=0.025)
-    cfg_path = "../4Others/color_ball.cfg"
+    cfg_path = "../4Others/color_ball_one_anchor.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
+    
+

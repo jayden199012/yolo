@@ -17,7 +17,7 @@ cuda = True
 images = "../1RawData/"
 det = "../2ProcessedData/"
 batch_size = 1
-confidence = float(0.275)
+confidence = float(0.4)
 nms_thesh = float(0.40)
 start = 0
 num_classes = 4
@@ -26,18 +26,19 @@ colors = pkl.load(open("../4Others/pallete", "rb"))
 #cfg_path = "../4Others/color_ball_one_anchor.cfg"
 
 # 3 anchors
-cfg_path = "../4Others/color_ball.cfg"
+cfg_path = "../4Others/color_ball_one_anchor.cfg"
 blocks = parse_cfg(cfg_path)
 model = yolo_v3(blocks)
 classes = load_classes('../4Others/color_ball.names')
 
 # 416
 
-#checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_424_2018-12-15_14_43_08.124629/2018-12-15_15_03_08.497061_model.pth"
+checkpoint_path = "../4TrainingWeights/experiment/one_anchor/480_seed_427_2018-12-19_22_02_06.032829/2018-12-19_22_26_13.738629_model.pth"
+
 
 # 512
 
-checkpoint_path = "../4TrainingWeights/experiment/input_size/700_to_750_imgs_seed_429_2018-12-09_05_01_14.012722/2018-12-09_05_16_05.907534_model.pth"
+checkpoint_path = "../4TrainingWeights/experiment/multiple_train/_seed_425_2018-12-19_00_32_29.569630/2018-12-19_00_35_55.883400_model.pth"
 
 
 # 608
@@ -60,8 +61,8 @@ if cuda:
 #model.net["width"] = 608
 #
 # 512
-model.net["height"] = 512
-model.net["width"] = 512
+model.net["height"] = 448
+model.net["width"] = 448
 
 ## 416
 #model.net["height"] = 416
@@ -88,10 +89,11 @@ assert inp_dim > 32
 
 cap = cv2.VideoCapture(0)
 # 480 p 
-#cap.set(3, 1280)
+cap.set(3, 800)
 
 # 720 p 
-cap.set(3, 1280)
+#cap.set(3, 1280)
+
 cap.get(3)
 cap.get(4)
 fps_list = []
@@ -121,11 +123,11 @@ while cap.isOpened():
         if type(output) == int:
             cv2.imshow("frame", frame)
             fps = (1 / (time.time() - start))
-            print(f"FPS of the video is {fps:5.4f}")
+#            print(f"FPS of the video is {fps:5.4f}")
             if add:
                 fps_list.append(fps)
                 if (time.time() - count_start_time) > count_time:
-                    print(f"avg_fps: {np.mean(fps_list):5.4f}")
+#                    print(f"avg_fps: {np.mean(fps_list):5.4f}")
                     break
             key = cv2.waitKey(1) & 0xFF
             if key == ord('b'):
@@ -153,7 +155,7 @@ while cap.isOpened():
         cv2.imshow("frame", frame)
         key = cv2.waitKey(1) & 0xff
         fps = 1 / (time.time() - start)
-        print(f"FPS of the video is {fps:5.4f}")
+#        print(f"FPS of the video is {fps:5.4f}")
         if add:
             fps_list.append(fps)
             if (time.time() - count_start_time) > count_time:

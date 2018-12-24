@@ -9,8 +9,7 @@ import os
 import random 
 import pandas as pd
 
-width_in_cfg_file = 416.
-height_in_cfg_file = 416.
+
 
 def IOU(x,centroids):
     similarities = []
@@ -29,7 +28,18 @@ def IOU(x,centroids):
         similarities.append(similarity) # will become (k,) shape
     return np.array(similarities) 
 
-def avg_IOU(X,centroids):
+
+def get_anchors(centroids, width_in_cfg_file, height_in_cfg_file): 
+    anchors = centroids.copy()
+    for i in range(anchors.shape[0]):
+        anchors[i][0] *= width_in_cfg_file / 32
+        anchors[i][1] *= height_in_cfg_file / 32
+    widths = anchors[:, 0]
+    sorted_indices = np.argsort(widths)
+    return anchors, sorted_indices, anchors[sorted_indices]
+
+
+def avg_IOU(X, centroids):
     n,d = X.shape
     sum = 0.
     for i in range(X.shape[0]):
@@ -37,35 +47,27 @@ def avg_IOU(X,centroids):
         sum+= max(IOU(X[i],centroids)) 
     return sum/n
 
-def write_anchors_to_file(centroids,X,anchor_file):
-    f = open(anchor_file,'w')
+def write_anchors_to_file(centroids,X,anchor_file, width_in_cfg_file,
+                          height_in_cfg_file):
     
-    anchors = centroids.copy()
-    print(anchors.shape)
-
-    for i in range(anchors.shape[0]):
-        anchors[i][0]*=width_in_cfg_file
-        anchors[i][1]*=height_in_cfg_file
-         
-
-    widths = anchors[:,0]
-    sorted_indices = np.argsort(widths)
-
-    print('Anchors = ', anchors[sorted_indices])
+    anchors , sorted_indices, anchors_sort = get_anchors(centroids,
+                                                         width_in_cfg_file,
+                                                         height_in_cfg_file)
+    print('Anchors = ', anchors_sort)
         
-    for i in sorted_indices[:-1]:
-        f.write('%0.2f,%0.2f, '%(anchors[i,0],anchors[i,1]))
+#    for i in sorted_indices[:-1]:
+#        f.write('%0.2f,%0.2f, '%(anchors[i,0],anchors[i,1]))
+#
+#    #there should not be comma after last anchor, that's why
+#    f.write('%0.2f,%0.2f\n'%(anchors[sorted_indices[-1:],0],anchors[sorted_indices[-1:],1]))
+#    
+#    f.write('%f\n'%(avg_IOU(X,centroids)))
+    return anchors_sort
 
-    #there should not be comma after last anchor, that's why
-    f.write('%0.2f,%0.2f\n'%(anchors[sorted_indices[-1:],0],anchors[sorted_indices[-1:],1]))
-    
-    f.write('%f\n'%(avg_IOU(X,centroids)))
-    print()
 
-def kmeans(X,centroids,eps,anchor_file):
+def kmeans(X,centroids,eps,anchor_file, width_in_cfg_file, height_in_cfg_file):
     
     N = X.shape[0]
-    iterations = 0
     k,dim = centroids.shape
     prev_assignments = np.ones(N)*(-1)    
     iter = 0
@@ -79,15 +81,15 @@ def kmeans(X,centroids,eps,anchor_file):
             D.append(d)
         D = np.array(D) # D.shape = (N,k)
         
-        print("iter {}: dists = {}".format(iter,np.sum(np.abs(old_D-D))))
             
         #assign samples to centroids 
         assignments = np.argmin(D,axis=1)
         
         if (assignments == prev_assignments).all() :
-            print("Centroids = ",centroids)
-            write_anchors_to_file(centroids,X,anchor_file)
-            return
+            anchors = write_anchors_to_file(centroids,X,anchor_file,
+                                            width_in_cfg_file,
+                                            height_in_cfg_file)
+            return anchors
 
         #calculate new centroids
         centroid_sums=np.zeros((k,dim),np.float)
@@ -99,43 +101,53 @@ def kmeans(X,centroids,eps,anchor_file):
         prev_assignments = assignments.copy()     
         old_D = D.copy()  
 
-def main(argv):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-filelist', default = '../color_balls/label.csv', 
-                        help='path to filelist\n' )
-    parser.add_argument('-output_dir', default = '../color_balls/', type = str, 
-                        help='Output anchor directory\n' )  
-    parser.add_argument('-num_clusters', default = 9, type = int, 
-                        help='number of clusters\n' )  
+def generate_anchor(label_csv, width_in_cfg_file, height_in_cfg_file, 
+                    num_clusters=3 ):
 
-   
-    args = parser.parse_args()
-    
-    if not os.path.exists(args.output_dir):
-        os.mkdir(args.output_dir)
 
-    f = pd.read_csv(args.filelist)
+    f = pd.read_csv(label_csv)
 
     annotation_dims = np.array([tuple(x) for x in f.iloc[:,4:].values])
   
     eps = 0.005
     
-    if args.num_clusters == 0:
+    if num_clusters == 0:
         for num_clusters in range(1,11): #we make 1 through 10 clusters 
-            anchor_file = join( args.output_dir,'anchors%d.txt'%(num_clusters))
+            anchor_file = join('anchors%d.txt'%(num_clusters))
 
             indices = [ random.randrange(annotation_dims.shape[0]) for i in range(num_clusters)]
             centroids = annotation_dims[indices]
-            kmeans(annotation_dims,centroids,eps,anchor_file)
-            print('centroids.shape', centroids.shape)
+            anchors = kmeans(annotation_dims,centroids,eps,anchor_file,
+                             width_in_cfg_file, height_in_cfg_file)
+
     else:
-        anchor_file = join( args.output_dir,'anchors%d.txt'%(args.num_clusters))
-        indices = [ random.randrange(annotation_dims.shape[0]) for i in range(args.num_clusters)]
+        anchor_file = join('anchors%d.txt'%(num_clusters))
+        indices = [random.randrange(annotation_dims.shape[0]) for i in range(num_clusters)]
         centroids = annotation_dims[indices]
-        kmeans(annotation_dims,centroids,eps,anchor_file)
-        print('centroids.shape', centroids.shape)
+        anchors = kmeans(annotation_dims,centroids,eps,anchor_file,
+                         width_in_cfg_file, height_in_cfg_file)
+    return anchors
 
+
+def set_anchors_to_model(model, num_anchors, label_csv_mame, input_w, input_h):
+    anchors = generate_anchor(label_csv_mame, input_w, input_h,
+                              num_clusters=num_anchors)
+    # loop through yolo layer from the back and ad anchors box number to
+    # each yolo layer. larger anchors are in the front layers
+    mask = []
+    start = 0
+    num_anchor_per_layer = num_anchors/3
+    for i in range(num_anchors+1):
+        if i and (i % num_anchor_per_layer) == 0:
+            mask.append(np.arange(start, i))
+            start = i  
+    for index, layer in enumerate(model.layer_type_dic['yolo'][::-1]):
+        model.module_list[layer][0].anchors = anchors[mask[index]]
+        
 if __name__=="__main__":
-    main(sys.argv)
-    
-
+    label_csv= '../color_balls/label.csv'
+    width_in_cfg_file = 512.
+    height_in_cfg_file = 512.
+    num_clusters = 3
+    anchors = generate_anchor(label_csv, width_in_cfg_file, height_in_cfg_file,
+                              num_clusters=3)
