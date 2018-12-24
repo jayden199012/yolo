@@ -2,6 +2,7 @@ from __future__ import division
 
 import time
 import numpy as np
+import json
 import datetime
 import os
 import torch
@@ -15,10 +16,11 @@ from evaluate import eval_score, get_map
 from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
 from tensorboardX import SummaryWriter
-import sys
+
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
-          conf_list, classes, iou_conf, loop_conf=False, loop_epoch=20):
+          conf_list, classes, iou_conf, save_txt, loop_conf=False,
+          loop_epoch=20):
     config["global_step"] = 0
 #    map_counter = 0
 
@@ -88,7 +90,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                 model.train(False)
                 print(f"test epoch number {epoch+1}")
                 if (epoch+1) % 5 == 0:
-                    _save_checkpoint(model.state_dict(), config)
+                    _save_checkpoint(model, model.state_dict(), config, save_txt)
                     # results consist best_map, best_ap, best_conf,
                     # specific_conf_map, specific_conf_ap
                     map_results = get_map(model, test_loader, cuda, conf_list,
@@ -112,7 +114,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
             lr_scheduler.step()
 
     # model.train(False)
-    _save_checkpoint(model.state_dict(), config)
+    _save_checkpoint(model, model.state_dict(), config)
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = get_map(model, test_loader, cuda, conf_list, iou_conf,
                             classes, train=False, loop_conf=True)
@@ -129,12 +131,16 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
         map_frame
 
 
-def _save_checkpoint(state_dict, config, evaluate_func=None):
+def _save_checkpoint(model, state_dict, config, save_txt=True):
     # global best_eval_result
-    checkpoint_path = os.path.join(
-            config["sub_working_dir"], str(datetime.datetime.now()).replace(
-                                   " ",  "_").replace(":",  "_") + "_model.pth"
-                                    )
+    time_now = str(datetime.datetime.now()).replace(
+                                   " ",  "_").replace(":",  "_")
+    if save_txt:
+        with open(f'{config["sub_working_dir"]}/{time_now}.txt', "w") as file:
+            file.write(json.dumps(model.net))
+
+    checkpoint_path = os.path.join(config["sub_working_dir"],
+                                   time_now + "_model.pth")
     torch.save(state_dict, checkpoint_path)
     logging.info("Model checkpoint saved to %s" % checkpoint_path)
 
@@ -145,10 +151,10 @@ def worker_init_fn(worker_id):
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
          cuda=True, specific_conf=0.5, iou_conf=0.5, sub_name='',
-         selected_cls=False, return_csv=False):
+         selected_cls=False, return_csv=False, save_txt=True):
     date_time_now = str(
             datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    config = model.net
+    config = model.net.copy()
     test_root_dir = "../1TestData"
     # label csv column names
     name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
@@ -212,7 +218,7 @@ def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
     # Start training
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = train(model, optimizer, cuda, config, train_loader,
-                          test_loader, conf_list, classes, iou_conf)
+                          test_loader, conf_list, classes, iou_conf, save_txt)
     if return_csv:
         map_frame.to_csv(f"{config['sub_working_dir']}_final_performance.csv",
                          index=True)
