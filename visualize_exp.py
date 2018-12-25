@@ -291,10 +291,13 @@ def show():
 # =============================================================================
     results_path = "../5Compare/input_size/2018-12-10_18_13_42.903424/"
     test_name_list = ['320', '416', '512', '608']
-    test_name_list = ['512']
+    test_name_list = [ '416', '512', '608']
     visual = results(results_path, test_name_list, csv_name)
+    
     visual.figsize = (10, 10)
     visual.compare_vis(visual.line_all, suptitle='Three anchors with input size ')
+    visual.compare_map(visual.best_map, sort=False,
+                       suptitle='Three anchors ')
     visual.compare_vis(visual.best_map, sort=False,
                        suptitle='Three anchors with input size ')
 #    =============================================================================
@@ -342,24 +345,19 @@ def show():
                        suptitle='Best mAP Comparism')
     visual.compare_vis(visual.line_all, suptitle='mAP Comparism')
 # =============================================================================
-# compare 608 one anchor 
+# compare one anchor input size
 # =============================================================================
-    results_path = "../5Compare/one_anchor_input_size_608/2018-12-18_22_01_50.694304/"
-    test_name_list = [f"_" for x in range(420, 425)]
+    results_path = "../5Compare/one_anchor_input_size/2018-12-24_17_54_06.730789/"
+    test_name_list = ['416', '512', '608']
+#    test_name_list = [f"_" for x in range(420, 425)]
     visual = results(results_path, test_name_list, csv_name)
-    visual.compare_vis(visual.best_map, sort=False,
-                       suptitle='One anchor with input size 608 ')
-    visual.compare_vis(visual.line_all, suptitle='One anchor with input size 608 ')
-# =============================================================================
-# compare 512 one anchor 
-# =============================================================================
-    results_path = "../5Compare/one_anchor_input_size_512/2018-12-19_00_10_35.035996/"
-    test_name_list = [f"_" for x in range(420, 425)]
-    visual = results(results_path, test_name_list, csv_name)
+    visual.map.max(axis=1)
     visual.figsize = (10, 10)
     visual.compare_vis(visual.best_map, sort=False,
-                       suptitle='One anchor with input size 512 ')
-    visual.compare_vis(visual.line_all, suptitle='One anchor with input size 512 ')
+                       suptitle='One anchor with input size  ')
+    visual.compare_map(visual.best_map, sort=False,
+                       suptitle='One anchor ')
+    visual.compare_vis(visual.line_all, suptitle='One anchor with input size ')
 # =============================================================================
 #     general usage
 # =============================================================================

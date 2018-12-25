@@ -72,8 +72,10 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                                 # get the sub path, usually the expriment name
                                 sub_p = root.split('/')[-1]
                                 # get the name before the file type
-                                sub_f = file.split('.')[0]
+                                sub_f = file.split('\\')[-1].split('.')[0]
                                 weights_path = f"{weight_dir+sub_p}/{sub_f}*"
+                                print(f"file is {file}")
+                                print(f"weights_path is {weights_path}")
                                 weights_path = glob.glob(weights_path)[-1]
                                 weights_path = glob.glob(
                                         weights_path+"/*.pth")[-1]

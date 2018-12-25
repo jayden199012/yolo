@@ -12,6 +12,7 @@ from yolo_v3 import yolo_v3
 import numpy as np
 import os
 import glob
+import pandas as pd
 
 
 def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
@@ -39,13 +40,16 @@ def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
     cap = cv2.VideoCapture(0)
     fps_list = []
     add = False
+    print(f"this is height {height}")
     if height > 480:
         # 720 p
-        cap.set(4, 720)
+        cap.set(3, 1280)
 
     else:
         # 480 p
-        cap.set(4, 480)
+        cap.set(3, 800)
+    print(f"width :{cap.get(3)}")
+    print(f"height :{cap.get(4)}")
     assert cap.isOpened(), 'Cannot capture source'
     start = time.time()
     count_start_time = start + count_delay
@@ -95,13 +99,13 @@ def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
             output[:,[1,3]] -= (inp_dim - scaling_factor*im_dim[:,0].view(-1,1))/2
             output[:,[2,4]] -= (inp_dim - scaling_factor*im_dim[:,1].view(-1,1))/2
             output[:,1:5] /= scaling_factor
-    
+
             for i in range(output.shape[0]):
                 output[i, [1,3]] = torch.clamp(output[i, [1,3]], 0.0, im_dim[i,0])
                 output[i, [2,4]] = torch.clamp(output[i, [2,4]], 0.0, im_dim[i,1])
-    
+
     #        classes = load_classes('../4Others/coco.names')
-    
+
             list(map(lambda x: write(x, frame, classes), output))
             cv2.imshow("frame", frame)
             key = cv2.waitKey(1) & 0xff
@@ -111,7 +115,6 @@ def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
                 fps_list.append(fps)
                 if (time.time() - count_start_time) > count_time:
                     print(f"avg_fps: {np.mean(fps_list):5.4f}")
-                    
                     cv2.destroyAllWindows()
                     cap.release()
                     return np.mean(fps_list)
@@ -129,23 +132,28 @@ def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
 
 
 def avg_fps(rootdir, width, height, cfg_path, count_delay, classes, colors,
-            confidence, nms_thesh, cuda, count_time, criteria_func=False,
+            nms_thesh, cuda, count_time, csv_path, criteria_func=False,
             **kwargs):
     fps_list = []
+    csv_df = pd.read_csv(csv_path, index_col=0)
     for root, subdirs, files in os.walk(rootdir,  topdown=False):
         if len(subdirs):
             for subdir in subdirs:
                 try:
                     if criteria_func(subdir, **kwargs):
-                        path = f"{root}/{subdir}/*.pth"
+                        path = f"{root}{subdir}/*.pth"
                         files = glob.glob(path)
                     else:
                         continue
-                except:
-                    path = f"{root}/{subdir}/*.pth"
+                except NameError:
+                    path = f"{root}{subdir}/*.pth"
                     files = glob.glob(path)
                 if len(files):
-                    file = files[-1]
+                    file = files[-1].replace("\\", "/")
+                    print(f"this is file {file}")
+                    confidence = csv_df[
+                                        csv_df.weights_path == file
+                                        ].confidence.values[0]
                     fps_list.append(run_webcam(width=width, height=height,
                                                cfg_path=cfg_path,
                                                checkpoint_path=file,
@@ -161,31 +169,50 @@ def avg_fps(rootdir, width, height, cfg_path, count_delay, classes, colors,
     return np.mean(fps_list)
 
 
-def main(width, height, count_delay, count_time=10, cuda=True,
-         images="../1RawData/", det="../2ProcessedData/", batch_size=1,
-         confidence=float(0.4), nms_thesh=float(0.40), criteria_func=False,
-         **kwargs):
+def main(rootdir, width, height, count_delay, csv_path, count_time=10,
+         cuda=True,  images="../1RawData/", det="../2ProcessedData/",
+         nms_thesh=float(0.40), criteria_func=False, **kwargs):
 
     colors = pkl.load(open("../4Others/pallete", "rb"))
     classes = load_classes('../4Others/color_ball.names')
-    # 3 anchors
-    cfg_path = "../4Others/color_ball_one_anchor.cfg"
-    # one anchor
-    # cfg_path = "../4Others/color_ball_one_anchor.cfg"
-    avg_fps(rootdir=rootdir, width=width, height=height, cfg_path=cfg_path,
-            count_delay=count_delay, classes=classes, colors=colors,
-            confidence=confidence, nms_thesh=nms_thesh,
-            cuda=cuda, count_time=count_time, criteria_func=criteria_func,
-            **kwargs)
+    mean_fps = avg_fps(rootdir=rootdir, width=width, height=height,
+                       cfg_path=cfg_path, count_delay=count_delay,
+                       classes=classes, colors=colors, nms_thesh=nms_thesh,
+                       cuda=cuda, count_time=count_time,
+                       criteria_func=criteria_func, csv_path=csv_path,
+                       **kwargs)
+    return mean_fps
 
 
-
+# this function should be redefined depedns on your usuage
+def criteria_func(subdir, criterial_string):
+    if subdir.split("_")[0] == criterial_string:
+        print(f'this is the string {subdir.split("_")[0]}')
+        return True
+    else:
+        print(f'this is the string {subdir.split("_")[0]}')
+        return False
+    
+    
+    
 if __name__ == '__main__':
-    dim = 512
-    count_delay = 2
-    rootdir = '../4TrainingWeights/experiment/one_anchor_input_size_512/'
-    main(dim, dim, count_delay, count_time=20, cuda=True,
-         images="../1RawData/", det="../2ProcessedData/", batch_size=1,
-         confidence=float(0.4), nms_thesh=float(0.40))
+    dim_list = [416, 512, 608]
+    avg_mean_fps = []
+    count_delay = 4
+    rootdir = '../4TrainingWeights/experiment/one_anchor_input_size/'
+#    rootdir = '../4TrainingWeights/experiment/input_size/'
+    csv_path = "../5Compare/top__results.csv"
+    # one anchors
+    cfg_path = "../4Others/color_ball_one_anchor.cfg"
+    # three anchor
+#    cfg_path = "../4Others/color_ball.cfg"
+    for dim in dim_list:
+        criterial_string = str(dim)
+        avg_mean_fps.append(main(rootdir, dim, dim, count_delay, csv_path=csv_path, count_time=20,
+                        cuda=True, images="../1RawData/", det="../2ProcessedData/",
+                        nms_thesh=float(0.40), criteria_func=criteria_func,
+                        criterial_string=criterial_string))
+    print(avg_mean_fps)
+    
 
-                
+
