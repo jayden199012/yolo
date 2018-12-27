@@ -55,6 +55,8 @@ class CustData(Dataset):
         if self.detection_phase:
             samples = {'ori_image': ori_image, 'image': image,
                        'img_name': img_name.split('\\')[-1], 'dim': (w, h)}
+        else:
+            samples = {'image': image, 'label': labels}
         return samples
 
 

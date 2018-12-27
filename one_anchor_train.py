@@ -15,13 +15,13 @@ from generate_anchors import set_anchors_to_model
 def compare():
     date_time_now = str(
         datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    compare_path = f"../5Compare/one_anchor/{date_time_now}/"
+    compare_path = f"../5Compare/one_anchor_input_size/{date_time_now}/"
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
     num_anchors = 3
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
-    seed_range = list(range(425, 428))
-    input_sizes = [512]
+    seed_range = list(range(424, 428))
+    input_sizes = [416, 448, 480, 512, 608]
     classes = load_classes('../4Others/color_ball.names')
     cfg_path = "../4Others/color_ball_one_anchor.cfg"
     blocks = parse_cfg(cfg_path)
@@ -31,9 +31,6 @@ def compare():
     label_csv_mame = '../color_balls/label.csv'
     img_txt_path = "../color_balls/*.txt"
     root_dir = "../color_balls"
-    # save the list of input sizes into the conf dictionary
-    model.net['widths'] = input_sizes
-    model.net['heights'] = input_sizes
     time_taken_df = pd.DataFrame(columns=list(seed_range))
     for input_size in input_sizes:
         # now parse the size into the model
@@ -41,6 +38,8 @@ def compare():
         model.net['height'] = input_size
         set_anchors_to_model(model, num_anchors, label_csv_mame, input_size,
                              input_size)
+        yolo_layer = model.layer_type_dic['yolo'][0]
+        model.net['anchors'] = model.module_list[yolo_layer][0].anchors
         for index, seed in enumerate(seed_range):
             model.load_weights("../4Weights/yolov3.weights",
                                cust_train_zero=True)
