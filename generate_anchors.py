@@ -32,8 +32,8 @@ def IOU(x,centroids):
 def get_anchors(centroids, width_in_cfg_file, height_in_cfg_file): 
     anchors = centroids.copy()
     for i in range(anchors.shape[0]):
-        anchors[i][0] *= width_in_cfg_file / 32
-        anchors[i][1] *= height_in_cfg_file / 32
+        anchors[i][0] *= width_in_cfg_file
+        anchors[i][1] *= height_in_cfg_file
     widths = anchors[:, 0]
     sorted_indices = np.argsort(widths)
     return anchors, sorted_indices, anchors[sorted_indices]
@@ -99,7 +99,7 @@ def kmeans(X,centroids,eps,anchor_file, width_in_cfg_file, height_in_cfg_file):
             centroids[j] = centroid_sums[j]/(np.sum(assignments==j))
         
         prev_assignments = assignments.copy()     
-        old_D = D.copy()  
+
 
 def generate_anchor(label_csv, width_in_cfg_file, height_in_cfg_file, 
                     num_clusters=3 ):

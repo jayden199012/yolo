@@ -13,15 +13,19 @@ import numpy as np
 import os
 import glob
 import pandas as pd
+from generate_anchors import set_anchors_to_model
 
 
 def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
-               count_delay, confidence, nms_thesh, cuda=True, count_time=10):
+               count_delay, confidence, nms_thesh, label_csv_mame,
+               cuda=True, count_time=10, num_anchors=3):
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint)
     num_classes = len(classes)
+    set_anchors_to_model(model, num_anchors, label_csv_mame, width,
+                         height)
     for params in model.parameters():
         params.requires_grad = False
     if cuda:
@@ -93,7 +97,7 @@ def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
                 if key == 27:
                     break
                 continue
-    
+
             im_dim = im_dim.repeat(output.size(0), 1)
             scaling_factor = torch.min(inp_dim/im_dim,1)[0].view(-1,1)
             output[:,[1,3]] -= (inp_dim - scaling_factor*im_dim[:,0].view(-1,1))/2
@@ -132,8 +136,8 @@ def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
 
 
 def avg_fps(rootdir, width, height, cfg_path, count_delay, classes, colors,
-            nms_thesh, cuda, count_time, csv_path, criteria_func=False,
-            **kwargs):
+            nms_thesh, cuda, count_time, csv_path, num_anchors,
+            label_csv_mame, criteria_func=False, **kwargs):
     fps_list = []
     csv_df = pd.read_csv(csv_path, index_col=0)
     for root, subdirs, files in os.walk(rootdir,  topdown=False):
@@ -163,15 +167,18 @@ def avg_fps(rootdir, width, height, cfg_path, count_delay, classes, colors,
                                                confidence=confidence,
                                                nms_thesh=nms_thesh,
                                                cuda=cuda,
-                                               count_time=count_time))
+                                               count_time=count_time,
+                                               label_csv_mame=label_csv_mame,
+                                               num_anchors=num_anchors))
                     print(f"this is fps_list {fps_list}")
     print(f"avg_fps: {np.mean(fps_list):5.4f}")
     return np.mean(fps_list)
 
 
-def main(rootdir, width, height, count_delay, csv_path, count_time=10,
+def main(rootdir, width, height, count_delay, csv_path, num_anchors,
+         label_csv_mame, count_time=10,
          cuda=True,  images="../1RawData/", det="../2ProcessedData/",
-         nms_thesh=float(0.40), criteria_func=False, **kwargs):
+         nms_thesh=float(0.40), criteria_func=False,   **kwargs):
 
     colors = pkl.load(open("../4Others/pallete", "rb"))
     classes = load_classes('../4Others/color_ball.names')
@@ -180,6 +187,7 @@ def main(rootdir, width, height, count_delay, csv_path, count_time=10,
                        classes=classes, colors=colors, nms_thesh=nms_thesh,
                        cuda=cuda, count_time=count_time,
                        criteria_func=criteria_func, csv_path=csv_path,
+                       label_csv_mame=label_csv_mame, num_anchors=num_anchors,
                        **kwargs)
     return mean_fps
 
@@ -196,9 +204,12 @@ def criteria_func(subdir, criterial_string):
     
     
 if __name__ == '__main__':
-    dim_list = [416, 512, 608]
+    num_anchors = 3
+    dim_list = [512]
+#    dim_list = [416, 512, 608]
     avg_mean_fps = []
     count_delay = 4
+    label_csv_mame = '../color_balls/label.csv'
     rootdir = '../4TrainingWeights/experiment/one_anchor_input_size/'
 #    rootdir = '../4TrainingWeights/experiment/input_size/'
     csv_path = "../5Compare/top__results.csv"
@@ -211,7 +222,9 @@ if __name__ == '__main__':
         avg_mean_fps.append(main(rootdir, dim, dim, count_delay, csv_path=csv_path, count_time=20,
                         cuda=True, images="../1RawData/", det="../2ProcessedData/",
                         nms_thesh=float(0.40), criteria_func=criteria_func,
-                        criterial_string=criterial_string))
+                        criterial_string=criterial_string,
+                        label_csv_mame=label_csv_mame,
+                        num_anchors=num_anchors))
     print(avg_mean_fps)
     
 

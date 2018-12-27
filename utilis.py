@@ -467,6 +467,15 @@ def my_collate(batch):
     return samples
 
 
+# to combine label and images together during detection phase
+def my_collate_detection(batch):
+    original_images = [item["ori_image"] for item in batch]
+    images = torch.stack([item["image"] for item in batch], 0)
+    img_names = [item["img_name"] for item in batch]
+    dims = [item["dim"] for item in batch]
+    return original_images, images, img_names, dims
+
+
 def draw_boxes(image, boxes):
     fig, ax = plt.subplots(1, figsize=(7, 7))
     boxes = boxes * image.shape[0]
@@ -486,6 +495,24 @@ def write(x, results, classes):
     c1 = tuple(x[1:3].int())
     c2 = tuple(x[3:5].int())
     img = results
+    cls = int(x[7])
+#    color = random.choice(colors)
+    color = 2
+    label = "{0}".format(classes[cls])
+    cv2.rectangle(img, c1, c2, color, 1)
+    t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]
+    c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
+    cv2.rectangle(img, c1, c2, color, -1)
+    cv2.putText(img, label, (c1[0], c1[1] + t_size[1] + 4),
+                cv2.FONT_HERSHEY_PLAIN, 1, [225, 255, 255], 1)
+    return img
+
+
+def detection_write(x, results, classes):
+    c1 = tuple(x[1:3].int())
+    c2 = tuple(x[3:5].int())
+    img = results
+    img = results[int(x[0])]
     cls = int(x[7])
 #    color = random.choice(colors)
     color = 2
@@ -579,5 +606,6 @@ def resize_all_img(new_w, new_h, from_path, to_path):
             raise NameError(f"{save_path} already exists")
 
 
-
-         
+def worker_init_fn(worker_id):
+    np.random.seed(worker_id)
+     

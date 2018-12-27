@@ -4,13 +4,13 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 from utilis import letterbox_image
-
+import cv2
 
 class CustData(Dataset):
 
     def __init__(self, csv_file, root_dir,
                  pre_trans=None, transform=None, post_trans=None,
-                 label_action_func=False):
+                 detection_phase=False):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -33,7 +33,7 @@ class CustData(Dataset):
         self.transform = transform
         self.post_trans = post_trans
         self.list_IDs = self.label_frame.iloc[:, 0].unique()
-
+        self.detection_phase = detection_phase
 
     def __len__(self):
         return len(self.list_IDs)
@@ -41,6 +41,9 @@ class CustData(Dataset):
     def __getitem__(self, idx):
         img_name = self.list_IDs[idx]
         image = Image.open(img_name)
+        if self.detection_phase:
+            ori_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            w, h = image.size[:2]
         labels = self.label_frame.iloc[:, 1:][self.label_frame.iloc[
                 :, 0] == img_name].astype('float').values.reshape(-1, 5)
         if self.pre_trans:
@@ -49,7 +52,9 @@ class CustData(Dataset):
             image = self.transform(image)
         if self.post_trans:
             image, labels = self.post_trans(image, labels)
-        samples = {'image': image, 'label': labels}
+        if self.detection_phase:
+            samples = {'ori_image': ori_image, 'image': image,
+                       'img_name': img_name.split('\\')[-1], 'dim': (w, h)}
         return samples
 
 

@@ -11,7 +11,8 @@ import random
 from torch import optim
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from utilis import parse_cfg, prep_labels, my_collate, load_classes
+from utilis import parse_cfg, prep_labels, my_collate, load_classes,\
+ worker_init_fn
 from evaluate import eval_score, get_map
 from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
@@ -143,10 +144,6 @@ def _save_checkpoint(model, state_dict, config, save_txt=True):
                                    time_now + "_model.pth")
     torch.save(state_dict, checkpoint_path)
     logging.info("Model checkpoint saved to %s" % checkpoint_path)
-
-
-def worker_init_fn(worker_id):
-    np.random.seed(worker_id)
 
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,

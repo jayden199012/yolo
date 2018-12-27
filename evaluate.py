@@ -180,7 +180,8 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
                         )
                     outputs_ = filter_results(img.unsqueeze(0), confidence,
                                               num_classes, nms_conf)
-
+                    
+                    i# n our model if no results it outputs int 0
                     if outputs_ is not 0:
                         # Get predicted boxes, confidence scores and labels
                         pred_boxes = outputs_[:, 1:6].cpu().numpy()
