@@ -15,13 +15,13 @@ from generate_anchors import set_anchors_to_model
 def compare():
     date_time_now = str(
         datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    compare_path = f"../5Compare/one_anchor_input_size/{date_time_now}/"
+    compare_path = f"../5Compare/one_anchor/448_480/{date_time_now}/"
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
     num_anchors = 3
     conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
-    seed_range = list(range(424, 428))
-    input_sizes = [416, 448, 480, 512, 608]
+    seed_range = list(range(1227, 1242))
+    input_sizes = [448, 480]
     classes = load_classes('../4Others/color_ball.names')
     cfg_path = "../4Others/color_ball_one_anchor.cfg"
     blocks = parse_cfg(cfg_path)
@@ -38,8 +38,8 @@ def compare():
         model.net['height'] = input_size
         set_anchors_to_model(model, num_anchors, label_csv_mame, input_size,
                              input_size)
-        yolo_layer = model.layer_type_dic['yolo'][0]
-        model.net['anchors'] = model.module_list[yolo_layer][0].anchors
+        yolo_layer = [(model.layer_type_dic['yolo'][i]) for i in range(3)]
+        model.net['anchors'] = [model.module_list[yolo_layer[i]][0].anchors.tolist() for i in range(3)]
         for index, seed in enumerate(seed_range):
             model.load_weights("../4Weights/yolov3.weights",
                                cust_train_zero=True)
@@ -69,7 +69,7 @@ def compare():
 
 if __name__ == '__main__':
     seed = 1
-    torch.backends.cudnn.enabled = False
+    torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = False
     random.seed(seed)
     np.random.seed(seed)
