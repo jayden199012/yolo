@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from utilis import parse_cfg,  my_collate
 from yolo_v3 import yolo_v3
 from data import CustData
-
+from generate_anchors import set_anchors_to_model
 
 def bbox_iou_numpy(box1, box2):
     """Computes IoU between bounding boxes.
@@ -251,7 +251,7 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
 
 def main():
     cuda = True
-    specific_conf = 0.5
+    specific_conf = 0.25
     iou_conf = 0.5
     cfg_path = "../4Others/color_ball.cfg"
     test_root_dir = "../1TestData"
@@ -259,8 +259,11 @@ def main():
     classes = load_classes('../4Others/color_ball.names')
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
+#    set_anchors_to_model(model, 9, test_label_csv_mame, 608,
+#                             608)
+    model.net["height"] = 608
     conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
-    checkpoint_path = "../4TrainingWeights/2018-11-07_23_13_38.391465/2018-11-08_02_45_20.195250_model.pth"
+    checkpoint_path = '../4TrainingWeights/experiment/input_size/608_seed_427_2018-12-10_23_31_10.005616/2018-12-10_23_58_55.119565_model.pth'
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint)
     model = model.cuda()

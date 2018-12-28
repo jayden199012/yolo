@@ -91,12 +91,15 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                 model.train(False)
                 print(f"test epoch number {epoch+1}")
                 if (epoch+1) % 5 == 0:
-                    _save_checkpoint(model, model.state_dict(), config, save_txt)
                     # results consist best_map, best_ap, best_conf,
                     # specific_conf_map, specific_conf_ap
                     map_results = get_map(model, test_loader, cuda, conf_list,
                                           iou_conf, classes,
                                           train=True, loop_conf=loop_conf)
+                    model.net['best_map'] = map_results[0]
+                    model.net['confidence'] = map_results[2]
+                    _save_checkpoint(model, model.state_dict(), config,
+                                     save_txt)
                     for index, mr_name in enumerate(map_results_names):
                         try:
                             config["tensorboard_writer"].add_scalar(
@@ -115,10 +118,12 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
             lr_scheduler.step()
 
     # model.train(False)
-    _save_checkpoint(model, model.state_dict(), config)
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = get_map(model, test_loader, cuda, conf_list, iou_conf,
                             classes, train=False, loop_conf=True)
+    model.net['best_map'] = best_map
+    model.net['confidence'] = best_conf
+    _save_checkpoint(model, model.state_dict(), config)
     for index, mr_name in enumerate(map_results_names):
         try:
             config["tensorboard_writer"].add_scalar(

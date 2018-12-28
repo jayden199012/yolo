@@ -10,10 +10,11 @@ from yolo_v3 import yolo_v3
 from data import CustData
 from torchvision import transforms
 from torch.utils.data import DataLoader
-
+from generate_anchors import set_anchors_to_model
 
 def detection(cfg_path, batch_size, nms_thesh, confidence, classes, det, cuda,
-              checkpoint, label_csv_mame, root_dir, num_classes):
+              checkpoint, label_csv_mame, root_dir, num_classes, width, height,
+              num_anchors):
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_state_dict(checkpoint)
@@ -22,10 +23,11 @@ def detection(cfg_path, batch_size, nms_thesh, confidence, classes, det, cuda,
         model = model.cuda()
     for params in model.parameters():
         params.requires_grad = False
-    model.net["height"] = 416
-    model.net["width"] = 416
+    model.net["height"] = width
+    model.net["width"] = height
     inp_dim = model.net["height"]
-    
+    set_anchors_to_model(model, num_anchors, label_csv_mame, width,
+                         height)
     # yolo v3 down size the imput images 32 strides, therefore the input needs to
     # be a multiplier of 32 and > 32
     assert inp_dim % 32 == 0 

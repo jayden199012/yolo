@@ -14,24 +14,38 @@ import os
 import glob
 import pandas as pd
 from generate_anchors import set_anchors_to_model
+import json
 
 
-def run_webcam(width, height, cfg_path, checkpoint_path, classes, colors,
-               count_delay, confidence, nms_thesh, label_csv_mame,
-               cuda=True, count_time=10, num_anchors=3):
+def run_webcam(cfg_path, checkpoint_path, classes, colors, count_delay,
+               nms_thesh, label_csv_mame, confidence=0, cuda=True,
+               count_time=10, num_anchors=1, width=0, height=0):
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint)
     num_classes = len(classes)
-    set_anchors_to_model(model, num_anchors, label_csv_mame, width,
-                         height)
+    try:
+        weight_txt = checkpoint_path.replace('_model.pth', 'txt')
+        with open(weight_txt) as fp:
+            text = json.load(fp)
+            anchors = text['anchors']
+            model.net["height"] = text['height']
+            model.net["width"] = text['width']
+            if not confidence:
+                confidence = text['confidence']
+        for index, layer in enumerate(model.layer_type_dic['yolo'][::-1]):
+            model.module_list[layer][0].anchors = anchors[index][0]
+    except FileNotFoundError:
+        set_anchors_to_model(model, num_anchors, label_csv_mame, width,
+                             height)
+        model.net["height"] = height
+        model.net["width"] = width
     for params in model.parameters():
         params.requires_grad = False
     if cuda:
         model = model.cuda()
-    model.net["height"] = height
-    model.net["width"] = width
+
     inp_dim = height
     transform = transforms.Compose(
             [transforms.Normalize([0.485, 0.456, 0.406],
@@ -153,7 +167,7 @@ def avg_fps(rootdir, width, height, cfg_path, count_delay, classes, colors,
                     path = f"{root}{subdir}/*.pth"
                     files = glob.glob(path)
                 if len(files):
-                    file = files[-1].replace("\\", "/")
+                    file = files[-1]
                     print(f"this is file {file}")
                     confidence = csv_df[
                                         csv_df.weights_path == file
@@ -178,7 +192,7 @@ def avg_fps(rootdir, width, height, cfg_path, count_delay, classes, colors,
 def main(rootdir, width, height, count_delay, csv_path, num_anchors,
          label_csv_mame, count_time=10,
          cuda=True,  images="../1RawData/", det="../2ProcessedData/",
-         nms_thesh=float(0.40), criteria_func=False,   **kwargs):
+         nms_thesh=0.40, criteria_func=False, **kwargs):
 
     colors = pkl.load(open("../4Others/pallete", "rb"))
     classes = load_classes('../4Others/color_ball.names')
@@ -204,28 +218,53 @@ def criteria_func(subdir, criterial_string):
     
     
 if __name__ == '__main__':
-    num_anchors = 3
-    dim_list = [512]
-#    dim_list = [416, 512, 608]
+    '''
+    action 1:
+        is to loop throught a series of weights (with different seeds)
+    to find their average fps
+    action 2:
+        single weight fps
+    action 3:
+        loop through weights in result csv and input fps
+    '''
+    action = 2
+    num_anchors = 1
+#    dim_list = [480]
+    dim_list = [416, 512, 608]
     avg_mean_fps = []
     count_delay = 4
+    nms_thesh = 0.4
     label_csv_mame = '../color_balls/label.csv'
-    rootdir = '../4TrainingWeights/experiment/one_anchor_input_size/'
+    rootdir = '../4TrainingWeights/experiment/one_anchor/one_anchor_input_size/'
 #    rootdir = '../4TrainingWeights/experiment/input_size/'
-    csv_path = "../5Compare/top__results.csv"
+    csv_path = "../5Compare/one_anchor/top__results.csv"
     # one anchors
     cfg_path = "../4Others/color_ball_one_anchor.cfg"
     # three anchor
 #    cfg_path = "../4Others/color_ball.cfg"
-    for dim in dim_list:
-        criterial_string = str(dim)
-        avg_mean_fps.append(main(rootdir, dim, dim, count_delay, csv_path=csv_path, count_time=20,
-                        cuda=True, images="../1RawData/", det="../2ProcessedData/",
-                        nms_thesh=float(0.40), criteria_func=criteria_func,
-                        criterial_string=criterial_string,
-                        label_csv_mame=label_csv_mame,
-                        num_anchors=num_anchors))
+    if action == 0:
+        for dim in dim_list:
+            criterial_string = str(dim)
+            avg_mean_fps.append(main(rootdir, dim, dim, count_delay,
+                                csv_path=csv_path, count_time=20, cuda=True,
+                                criteria_func=criteria_func,
+                                criterial_string=criterial_string,
+                                label_csv_mame=label_csv_mame,
+                                num_anchors=num_anchors))
+    elif action == 1:
+        checkpoint_path = '../4TrainingWeights/experiment/one_anchor_input_size/480_seed_425_2018-12-27_03_18_42.265497/2018-12-27_03_43_00.009526_model.pth'
+        colors = pkl.load(open("../4Others/pallete", "rb"))
+        classes = load_classes('../4Others/color_ball.names')
+        confidence = 0.375
+        run_webcam(cfg_path, checkpoint_path,
+                   classes, colors, count_delay, confidence, nms_thesh,
+                   label_csv_mame, cuda=True, count_time=10, num_anchors=1)
+    else:
+        result_csv = '../5Compare/one_anchor/top__results.csv'
+        csv_df = pd.read_csv(result_csv, index_col=0)
+        for index, path in enumerate(csv_df['weights_path']):
+            confidence = csv_df.loc[index, 'confidence']
+            csv_df.loc[index, 'fps'] = run_webcam(cfg_path, checkpoint_path,
+                          classes, colors, count_delay, confidence, nms_thesh,
+                        label_csv_mame, cuda=True, count_time=10, num_anchors=1)
     print(avg_mean_fps)
-    
-
-

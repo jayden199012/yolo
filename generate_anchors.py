@@ -131,13 +131,13 @@ def generate_anchor(label_csv, width_in_cfg_file, height_in_cfg_file,
 
 def set_anchors_to_model(model, num_anchors, label_csv_mame, input_w, input_h):
     anchors = generate_anchor(label_csv_mame, input_w, input_h,
-                              num_clusters=num_anchors)
+                              num_clusters=num_anchors*3)
     # loop through yolo layer from the back and ad anchors box number to
     # each yolo layer. larger anchors are in the front layers
     mask = []
     start = 0
-    num_anchor_per_layer = num_anchors/3
-    for i in range(num_anchors+1):
+    num_anchor_per_layer = num_anchors
+    for i in range(num_anchors*3+1):
         if i and (i % num_anchor_per_layer) == 0:
             mask.append(np.arange(start, i))
             start = i  

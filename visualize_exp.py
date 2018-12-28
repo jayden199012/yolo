@@ -347,7 +347,7 @@ def show():
 # =============================================================================
 # compare one anchor input size
 # =============================================================================
-    results_path = "../5Compare/one_anchor_input_size/2018-12-24_17_54_06.730789/"
+    results_path = "../5Compare/one_anchor/one_anchor_input_size/2018-12-26_23_50_32.417949/"
     test_name_list = ['416', '512', '608']
 #    test_name_list = [f"_" for x in range(420, 425)]
     visual = results(results_path, test_name_list, csv_name)

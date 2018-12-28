@@ -5,24 +5,36 @@ import numpy as np
 import glob
 import pandas as pd
 
-
-
-def keep_latest_weights_only(rootdir):
+def keep_important_weights_only(rootdir, csv_rootdir, tfevent_rootdir):
+    ''' 
+    Results from csv gives the latest results while results from tfevents
+    gave us best results, if if the file is either one of them, it will be kept
+    otherwise deleted.
+    Therefore, please update both csv before executing this code!
+    '''
     answer = ''
     while answer not in ['y', 'n']:
         answer = input("This operation might remove some of your " +
                        "important documents, are you sure you want to " +
                        "CONTINUE? [Y/N]").lower()
         if answer == 'y':
+            important_weights = pd.read_csv(
+                    csv_rootdir, index_col=0)['weights_path'].tolist()
+            important_weights.extend(
+                    pd.read_csv(
+                                tfevent_rootdir,
+                                index_col=0)['weights_path'].tolist())
             for root, subdirs, files in os.walk(rootdir, topdown=False):
                 if len(subdirs):
                     for subdir in subdirs:
                         path = f"{root}/{subdir}/*.pth"
                         files = glob.glob(path)
                         if len(files):
-                            best_file = max(files, key=os.path.getctime)
+                            latest_file = max(files, key=os.path.getctime)
                             for file in files:
-                                if file != best_file:
+                                file = file.replace("\\", "/")
+                                if (file not in important_weights) or\
+                                        (file != latest_file):
                                     os.remove(file)
                         else:
                             try:
@@ -61,11 +73,12 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                         # handle from output csv
                         if csv:
                             df = pd.read_csv(file, index_col=0)
-                            max_map = df.max(axis=1).iloc[-1]
+                            max_map = df[::-1].max(axis=1).iloc[0]
                             confidence = np.round(float(
-                                                    df.idxmax(1).iloc[-1]), 3)
-                            
-                            results_df.loc[count, 'csv_name'] = file
+                                              np.argmax(df.loc['mAP', :][::-1],
+                                                  axis=1)), 3)
+                            results_df.loc[count, 'csv_name'] = file.replace(
+                                    '\\', '/')
                             # if weight_dir is given, we will look for
                             # the weight pth file from the weight directory
                             if weight_dir:
@@ -80,7 +93,7 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                                 weights_path = glob.glob(
                                         weights_path+"/*.pth")[-1]
                                 results_df.loc[count, 'weights_path'] =\
-                                    weights_path.replace('\\', '/')            
+                                    weights_path.replace('\\', '/')
                         # handle the tf events
                         else:
                             results_ = {'map': [],
@@ -99,8 +112,10 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                                         results_['global_steps'].append(
                                                 events.step)
                             try:
-                                best_map_pos = np.argmax(results_['map'])
-                            except ValueError:
+                                best_map_pos = np.where(
+                                        results_['map'] == np.max(
+                                                results_['map']))[-1][-1]
+                            except (ValueError, IndexError):
                                 continue
                             weight_paths = glob.glob(f"{root}/{subdir}/*.pth")
                             try:
@@ -110,7 +125,8 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
                                 weights_path = weight_paths[-1]
                                 results_df.loc[count, 'true_path'] = 0
                             results_df.loc[count,
-                                           'weights_path'] = weights_path
+                                           'weights_path'] =\
+                                weights_path.replace('\\', '/')
                             results_df.loc[count,
                                            'pth_position'] = best_map_pos
                             results_df.loc[count,
@@ -139,17 +155,33 @@ def get_top_n_results(rootdir, n="", csv=True, weight_dir=''):
             results_df.to_csv(out_name)
     return results_df
 
+
 # %%
 if __name__ == '__main__':
-    # csv
-    rootdir = '../5Compare/'
+    
+    weight_dir = '../4TrainingWeights/experiment/one_anchor/'
+#     csv
+    #    rootdir = '../5Compare/'
+    csv_rootdir = '../5Compare/one_anchor/'
+    get_top_n_results(csv_rootdir, csv=True, weight_dir=weight_dir)
+
 
     # from tf events
-#    rootdir = '../4TrainingWeights/experiment/'
-
-    weight_dir = '../4TrainingWeights/experiment/'
-
-#    get_top_n_results(rootdir, n=20, csv=True, weight_dir=weight_dir)
-    get_top_n_results(rootdir,  csv=True, weight_dir=weight_dir)
-
-
+    tfevent_rootdir = '../4TrainingWeights/experiment/one_anchor/'
+    get_top_n_results(tfevent_rootdir, csv=False)
+    
+    result_csv_name = 'top__results.csv'
+    keep_important_weights_only(weight_dir, csv_rootdir+result_csv_name,
+                                tfevent_rootdir+result_csv_name)
+# %%
+#csv = '../5Compare/input_size/2018-12-10_18_13_42.903424/608_seed_426_.csv'
+#
+#xx = pd.read_csv(csv, index_col=0)
+#np.argmax(xx.loc['mAP',:][::-1], axis=1)
+#xx[::-1].max(axis=1)[0]
+#xx.loc['mAP',:][::-1].max(axis=1)
+#xx.max(axis=1).iloc[-1]
+#np.round(float(np.argmax(xx.loc['mAP',:][::-1], axis=1)), 3)
+#x = [0.0, 0.11076324433088303]
+#np.argmax(x[::-1][::-1], axis=0)
+#np.where(x==np.max(x))
