@@ -214,9 +214,8 @@ def criteria_func(subdir, criterial_string):
     else:
         print(f'this is the string {subdir.split("_")[0]}')
         return False
-    
-    
-    
+
+
 if __name__ == '__main__':
     '''
     action 1:
@@ -260,11 +259,13 @@ if __name__ == '__main__':
                    classes, colors, count_delay, confidence, nms_thesh,
                    label_csv_mame, cuda=True, count_time=10, num_anchors=1)
     else:
-        result_csv = '../5Compare/one_anchor/top__results.csv'
-        csv_df = pd.read_csv(result_csv, index_col=0)
-        for index, path in enumerate(csv_df['weights_path']):
-            confidence = csv_df.loc[index, 'confidence']
-            csv_df.loc[index, 'fps'] = run_webcam(cfg_path, checkpoint_path,
-                          classes, colors, count_delay, confidence, nms_thesh,
-                        label_csv_mame, cuda=True, count_time=10, num_anchors=1)
+        result_csv = ['../5Compare/one_anchor/top__results.csv',
+                      '../4TrainingWeights/experiment/one_anchor/top__results.csv']
+        for csv in result_csv:
+            csv_df = pd.read_csv(csv, index_col=0)
+            for index, path in enumerate(csv_df['weights_path']):
+                confidence = csv_df.loc[index, 'confidence']
+                csv_df.loc[index, 'fps'] = run_webcam(cfg_path, checkpoint_path,
+                              classes, colors, count_delay, confidence, nms_thesh,
+                            label_csv_mame, cuda=True, count_time=10, num_anchors=1)
     print(avg_mean_fps)
