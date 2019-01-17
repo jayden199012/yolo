@@ -54,7 +54,8 @@ class CustData(Dataset):
             image, labels = self.post_trans(image, labels)
         if self.detection_phase:
             samples = {'ori_image': ori_image, 'image': image,
-                       'img_name': img_name.split('\\')[-1], 'dim': (w, h)}
+                       'img_name': img_name.split('\\')[-1], 'dim': (w, h),
+                       'labels': labels}
         else:
             samples = {'image': image, 'label': labels}
         return samples

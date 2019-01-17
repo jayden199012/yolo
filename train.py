@@ -22,7 +22,9 @@ from tensorboardX import SummaryWriter
 def train(model, optimizer, cuda, config, train_loader, test_loader,
           conf_list, classes, iou_conf, save_txt, loop_conf=False,
           loop_epoch=20):
-    config["global_step"] = 0
+    # inituate a dictionry to store all the logs for tensorboard
+    ts_writer = {}
+    model.config["global_step"] = 0
 #    map_counter = 0
 
     # multi learning rate
@@ -104,7 +106,8 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                         try:
                             config["tensorboard_writer"].add_scalar(
                                     mr_name, map_results[index],
-                                    config["global_step"])
+                                    config["global
+                                           _step"])
                         except AttributeError:
                             continue
 
@@ -115,7 +118,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                                                       evaluate_running_loss[i],
                                                       config["global_step"])
                 model.train(True)
-            lr_scheduler.step()
+        lr_scheduler.step()
 
     # model.train(False)
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
@@ -123,7 +126,7 @@ def train(model, optimizer, cuda, config, train_loader, test_loader,
                             classes, train=False, loop_conf=True)
     model.net['best_map'] = best_map
     model.net['confidence'] = best_conf
-    _save_checkpoint(model, model.state_dict(), config)
+    _save_checkpoint(model, model.state_dict(), config, save_txt)
     for index, mr_name in enumerate(map_results_names):
         try:
             config["tensorboard_writer"].add_scalar(
@@ -141,14 +144,15 @@ def _save_checkpoint(model, state_dict, config, save_txt=True):
     # global best_eval_result
     time_now = str(datetime.datetime.now()).replace(
                                    " ",  "_").replace(":",  "_")
-    if save_txt:
-        with open(f'{config["sub_working_dir"]}/{time_now}.txt', "w") as file:
-            file.write(json.dumps(model.net))
-
-    checkpoint_path = os.path.join(config["sub_working_dir"],
-                                   time_now + "_model.pth")
+    checkpoint_path = os.path.join(model.config["sub_working_dir"],
+                                   time_now + ".pth")
+    model.config["pretrain_snapshot"] = checkpoint_path
     torch.save(state_dict, checkpoint_path)
-    logging.info("Model checkpoint saved to %s" % checkpoint_path)
+    logging.info(f"Model checkpoint saved to {checkpoint_path}")
+    if save_txt:
+        with open(f'{model.config["sub_working_dir"]}/{time_now}.txt', "w"
+                  ) as file:
+            file.write(json.dumps(model.config, indent=4))
 
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,

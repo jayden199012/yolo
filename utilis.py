@@ -473,7 +473,8 @@ def my_collate_detection(batch):
     images = torch.stack([item["image"] for item in batch], 0)
     img_names = [item["img_name"] for item in batch]
     dims = [item["dim"] for item in batch]
-    return original_images, images, img_names, dims
+    labels = [item["labels"] for item in batch]
+    return original_images, images, img_names, dims, labels
 
 
 def draw_boxes(image, boxes):

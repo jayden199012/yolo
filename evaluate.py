@@ -67,7 +67,8 @@ def eval_score(model, dataloader, cuda):
 
 
 def compute_map(num_classes, classes, all_detections, all_annotations,
-                conf_index, confidence, iou_conf, map_frame, train):
+                conf_index, confidence, iou_conf, map_frame, train,
+                actual_num_labels):
     average_precisions = {}
     for label in range(num_classes):
         true_positives = []
@@ -128,14 +129,16 @@ def compute_map(num_classes, classes, all_detections, all_annotations,
         # compute average precision
         average_precision = compute_ap(recall, precision)
         average_precisions[label] = average_precision
-    mAP = np.mean(list(average_precisions.values()))
+
+#    mAP = np.mean(list(average_precisions.values()))
+    mAP = sum(list(average_precisions.values()))/actual_num_labels
     if not train:
         print(f"Average Precisions when confidence = {confidence}:")
         for c, ap in zip(classes, average_precisions.values()):
             map_frame.loc[c, confidence] = ap
             print(f"+ Class '{c}' - AP: {ap}")
-        map_frame.loc["mAP", confidence] = mAP
         print(f"mAP: {mAP}")
+        map_frame.loc['mAP', confidence] = mAP
         print(f"average_precisions: {average_precisions}")
         return mAP, list(average_precisions.values()), map_frame
     else:
@@ -144,6 +147,7 @@ def compute_map(num_classes, classes, all_detections, all_annotations,
 
 def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
             train=False, specific_conf=0.5, loop_conf=False, nms_conf=0.5):
+    actual_num_labels = 0
     if loop_conf:
         loop_conf = conf_list
     else:
@@ -202,12 +206,11 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
                 all_annotations.append(
                                     [np.array([]) for _ in range(num_classes)]
                                         )
-
                 if any(label_[:, -1] > 0):
 
                     annotation_labels = label_[label_[:, -1] > 0, 0]
                     _annotation_boxes = label_[label_[:, -1] > 0, 1:]
-
+                    num_labels = len(np.unique(annotation_labels))
                     # Reformat to x1, y1, x2, y2 and rescale to image dim
                     annotation_boxes = np.empty_like(_annotation_boxes)
                     annotation_boxes[:, 0] = _annotation_boxes[:, 0] - _annotation_boxes[:, 2] / 2
@@ -215,16 +218,19 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
                     annotation_boxes[:, 2] = _annotation_boxes[:, 0] + _annotation_boxes[:, 2] / 2
                     annotation_boxes[:, 3] = _annotation_boxes[:, 1] + _annotation_boxes[:, 3] / 2
                     annotation_boxes *= img_size
-        
+
                     for label in range(num_classes):
                         all_annotations[-1][label] = annotation_boxes[annotation_labels == label, :]
+                actual_num_labels = np.max([actual_num_labels, num_labels])
         for conf_index, confidence in enumerate(loop_conf):
             print(f"Running for object confidence : {confidence}")
             # if train it results consists mAP, average_precisions map_frame
             # else: mAP, average_precisions
+            print(actual_num_labels)
             results = compute_map(num_classes, classes, all_detections,
                                   all_annotations, conf_index, confidence,
-                                  iou_conf, map_frame, train)
+                                  iou_conf, map_frame, train,
+                                  actual_num_labels)
             if conf_index == 0:
                 best_map = results[0]
                 best_ap = results[1]
@@ -253,7 +259,7 @@ def main():
     cuda = True
     specific_conf = 0.25
     iou_conf = 0.5
-    cfg_path = "../4Others/color_ball.cfg"
+    cfg_path = "../4Others/color_ball_one_anchor.cfg"
     test_root_dir = "../1TestData"
     test_label_csv_mame = '../1TestData/label.csv'
     classes = load_classes('../4Others/color_ball.names')
@@ -261,9 +267,9 @@ def main():
     model = yolo_v3(blocks)
 #    set_anchors_to_model(model, 9, test_label_csv_mame, 608,
 #                             608)
-    model.net["height"] = 608
+    model.net["height"] = 448
     conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
-    checkpoint_path = '../4TrainingWeights/experiment/input_size/608_seed_427_2018-12-10_23_31_10.005616/2018-12-10_23_58_55.119565_model.pth'
+    checkpoint_path = "../4TrainingWeights/experiment/one_anchor/one_anchor_input_size/448_seed_424_2018-12-27_01_19_43.494652/2018-12-27_01_43_31.599667_model.pth"
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint)
     model = model.cuda()
