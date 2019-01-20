@@ -18,13 +18,13 @@ from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
 from tensorboardX import SummaryWriter
 
+# new version
+
 
 def train(model, optimizer, cuda, config, train_loader, test_loader,
           conf_list, classes, iou_conf, save_txt, loop_conf=False,
           loop_epoch=20):
-    # inituate a dictionry to store all the logs for tensorboard
-    ts_writer = {}
-    model.config["global_step"] = 0
+    config["global_step"] = 0
 #    map_counter = 0
 
     # multi learning rate
@@ -144,15 +144,14 @@ def _save_checkpoint(model, state_dict, config, save_txt=True):
     # global best_eval_result
     time_now = str(datetime.datetime.now()).replace(
                                    " ",  "_").replace(":",  "_")
-    checkpoint_path = os.path.join(model.config["sub_working_dir"],
-                                   time_now + ".pth")
-    model.config["pretrain_snapshot"] = checkpoint_path
-    torch.save(state_dict, checkpoint_path)
-    logging.info(f"Model checkpoint saved to {checkpoint_path}")
     if save_txt:
-        with open(f'{model.config["sub_working_dir"]}/{time_now}.txt', "w"
-                  ) as file:
-            file.write(json.dumps(model.config, indent=4))
+        with open(f'{config["sub_working_dir"]}/{time_now}.txt', "w") as file:
+            file.write(json.dumps(model.net))
+
+    checkpoint_path = os.path.join(config["sub_working_dir"],
+                                   time_now + "_model.pth")
+    torch.save(state_dict, checkpoint_path)
+    logging.info("Model checkpoint saved to %s" % checkpoint_path)
 
 
 def main(model, classes, conf_list, label_csv_mame, img_txt_path, root_dir,
@@ -245,11 +244,84 @@ if __name__ == "__main__":
     root_dir = "../1TrainData"
     classes = load_classes('../4Others/color_ball.names')
     conf_list = np.arange(start=0.2, stop=0.95, step=0.025)
-    cfg_path = "../4Others/color_ball_one_anchor.cfg"
+    cfg_path = "../4Others/yolo.cfg"
     blocks = parse_cfg(cfg_path)
     model = yolo_v3(blocks)
     model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
     main(model, classes, conf_list, label_csv_mame=label_csv_mame,
          img_txt_path=img_txt_path, root_dir=root_dir)
     
+a = model.layer_type_dic
+model_dict = model.state_dict()
+model_dict['module_list.105']
+model
+from collections import ChainMap
+a = blocks[0]
+b = { 'max_batches': [12, 50],
+      'policy': ['steps', 'asdas'],
+      'steps': [1500, 3000, 6000]}
+c = ChainMap(b, a)
+c['max_batches']
+def abc(**kwargs):
+    for index, key in kwargs.items():
+        print(f"index : {index}, key: {key}")
+b['max_batches'] = 300
+abc(**c)
+from itertools import product
+k , v = zip(*b.items())
+new_items = [dict(zip(k, v_)) for v_ in product(*v)]
+# 1. filter out unnecessary keys
+pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+params = {'type': 'net',
+          'batch': 8,
+          'width': 512,
+          'height': 512,
+          'channels': 3,
+          'momentum': 0.9,
+          'decay': 0.0005,
+          'angle': '0',
+          'saturation': 0.25,
+          'exposure': 0.25,
+          'hue': 0.1,
+          'rand_crop': 0.2,
+          'learning_rate': 0.002,
+          'steps': 50,
+          'scales': 0.5,
+          'epochs': 35,
+          'pretrain_snapshot':
+                  '../4TrainingWeights/2018-12-27_06_12_10.754957_model.pth',
+          'working_dir': '../4TrainingWeights/experiment/conf_loss/',
+          'num_classes': 4,
+          'num_anchors': 1,
+          'anchors': anchors,
+          'lambda_coord': 3,
+          'ignore_threshold': .7,
+          'conf_lambda': 3,
+          'lambda_noobj': 0.5}
 
+tune_param = { 'max_batches': [12, 50],
+              'policy': ['steps', 'asdas'],
+              'steps': [1500, 3000, 6000]}
+m = yolo_v3(params, blocks)
+final_param = ChainMap(tune_param, params)
+final_param['max_batches']
+a = torch.FloatTensor(1,3,416,416).cuda()
+m.cuda()
+m(a, True)
+s =m.layer_type_dic
+m.module_list[-2][0].__code__()
+blocks[81]
+anchors = generate_anchor(label_csv_mame, 512, 512,
+                              num_clusters=1*3)
+anchors.shape
+anchors[[1,2,3]]
+a =([[ 26.3030303 ,  26.18181818],
+       [ 32.69074074,  32.75555556],
+       [ 38.54727669,  38.22309368],
+       [ 44.04885737,  43.74940898],
+       [ 53.535097  ,  51.85608466],
+       [ 62.52395515,  61.34012912],
+       [ 73.77478489,  71.93415638],
+       [ 91.44729345,  90.33903134],
+       [132.78787879, 131.15824916]])
+a.shape

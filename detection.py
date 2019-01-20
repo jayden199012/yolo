@@ -15,30 +15,29 @@ from evaluate import compute_map
 
 
 def detection(cfg_path, batch_size, nms_thesh, confidence, classes, det, cuda,
-              checkpoint, label_csv_mame, root_dir, num_classes, width, height,
-              num_anchors):
+              label_csv_mame, root_dir, params, width=False, height=False):
+    if width:
+        params["height"] = width
+    if height:
+        params["width"] = height
+
+    assert params["height"] % 32 == 0
+    assert params["height"] > 32
     blocks = parse_cfg(cfg_path)
-    model = yolo_v3(blocks)
-    model.load_state_dict(checkpoint)
+    model = yolo_v3(params, blocks)
     # model.load_weights("../4Weights/yolov3.weights")
     if cuda:
         model = model.cuda()
-    for params in model.parameters():
-        params.requires_grad = False
-    model.net["height"] = width
-    model.net["width"] = height
-    inp_dim = model.net["height"]
-    set_anchors_to_model(model, num_anchors, label_csv_mame, width,
-                         height)
+    for parameter in model.parameters():
+        parameter.requires_grad = False
     # yolo v3 down size the imput images 32 strides, therefore the input needs
     # to be a multiplier of 32 and > 32
-    assert inp_dim % 32 == 0
-    assert inp_dim > 32
+
 
     # put to evaluation mode so that gradient wont be calculated
     model.eval()
     transform = transforms.Compose(
-        [transforms.Resize(model.net["height"]), transforms.ToTensor(),
+        [transforms.Resize(model.params["height"]), transforms.ToTensor(),
          transforms.Normalize([0.485, 0.456, 0.406],
                               [0.229, 0.224, 0.225])])
     data = CustData(label_csv_mame, root_dir, transform=transform,
@@ -53,19 +52,22 @@ def detection(cfg_path, batch_size, nms_thesh, confidence, classes, det, cuda,
             images = images.cuda()
             im_dim_list = im_dim_list.cuda()
         prediction = model(images, cuda)
-        output = filter_results(prediction, confidence, num_classes, nms_thesh)
+        print(prediction.shape)
+        model.params['num_classes']
+        output = filter_results(prediction, confidence, params["num_classes"],
+                                nms_thesh)
         if type(output) != int:
             im_dim_list = torch.index_select(
                     im_dim_list, 0, output[:, 0].long())
-            scaling_factor = torch.min(inp_dim/im_dim_list, 1)[0].view(-1, 1)
+            scaling_factor = torch.min(params["height"] /im_dim_list, 1)[0].view(-1, 1)
 
             # Clamp all elements in input into the range [ min, max ] and
             # return a resulting tensor:
             # it is to make sure the min max of width and height are not larger
             # or smaller than the image boundary
-            output[:, [1, 3]] -= (inp_dim - scaling_factor *
+            output[:, [1, 3]] -= (params["height"]  - scaling_factor *
                                   im_dim_list[:, 0].view(-1, 1))/2
-            output[:, [2, 4]] -= (inp_dim - scaling_factor *
+            output[:, [2, 4]] -= (params["height"]  - scaling_factor *
                                   im_dim_list[:, 1].view(-1, 1))/2
             output[:, 1:5] /= scaling_factor
             for i in range(output.shape[0]):
@@ -73,7 +75,9 @@ def detection(cfg_path, batch_size, nms_thesh, confidence, classes, det, cuda,
                                                 0.0, im_dim_list[i, 0])
                 output[i, [2, 4]] = torch.clamp(output[i, [2, 4]],
                                                 0.0, im_dim_list[i, 1])
-        list(map(lambda x: detection_write(x, original_imgs, classes), output))
+            
+            list(map(lambda x: detection_write(x, original_imgs, classes),
+                     output))
         det_names = pd.Series(imlist).apply(
                            lambda x: "{}/{}".format(det, x.split("/")[-1]))
         list(map(cv2.imwrite, det_names, original_imgs))
@@ -119,7 +123,7 @@ def simgle_img_map(model, output, labels, num_classes, classes, confidence,
                 _annotation_boxes[:, 2] / 2
             annotation_boxes[:, 3] = _annotation_boxes[:, 1] +\
                 _annotation_boxes[:, 3] / 2
-            annotation_boxes *= model.net['height']
+            annotation_boxes *= model.params['height']
 
             for label in range(num_classes):
                 all_annotations[-1][label] =\
@@ -191,26 +195,50 @@ def main():
     # change cuda to True if you wish to use gpu
     cuda = True
     det = "../2ProcessedData/"
-    checkpoint = torch.load(checkpoint_path)
     # classes = load_classes('../4Others/coco.names')
     classes = load_classes('../4Others/color_ball.names')
     batch_size = 1
     confidence = float(0.4)
     nms_thesh = float(0.1)
-    num_classes = len(classes)
-    cfg_path = "../4Others/color_ball_one_anchor.cfg"
+#    cfg_path = "../4Others/color_ball_one_anchor.cfg"
+    cfg_path = "../4Others/yolo.cfg"
     label_csv_mame = '../1TestData/label.csv'
     root_dir = "../1TestData"
+    anchors = generate_anchor(label_csv_mame, 512, 512,
+                              num_clusters=1*3)
+    params = {'type': 'net',
+          'batch': 8,
+          'width': 512,
+          'height': 512,
+          'channels': 3,
+          'momentum': 0.9,
+          'decay': 0.0005,
+          'angle': '0',
+          'saturation': 0.25,
+          'exposure': 0.25,
+          'hue': 0.1,
+          'rand_crop': 0.2,
+          'learning_rate': 0.002,
+          'steps': 50,
+          'scales': 0.5,
+          'epochs': 35,
+          'pretrain_snapshot':
+                  '../4TrainingWeights/2018-12-27_06_12_10.754957_model.pth',
+          'working_dir': '../4TrainingWeights/experiment/conf_loss/',
+          'num_classes': 4,
+          'num_anchors': 1,
+          'anchors': anchors,
+          'lambda_coord': 3,
+          'ignore_threshold': .7,
+          'conf_lambda': 3,
+          'lambda_noobj': 0.5}
     detection(cfg_path, batch_size, nms_thesh, confidence, classes, det, cuda,
-              checkpoint, label_csv_mame, root_dir, num_classes, dim, dim,
-              num_anchors)
+              label_csv_mame, root_dir, params)
     df = get_single_img_map(cfg_path, batch_size, nms_thesh, confidence, classes,
-                           det, cuda, checkpoint, label_csv_mame, root_dir,
-                           num_classes, dim, dim, num_anchors)
+                           det, cuda, label_csv_mame, root_dir, params)
     return df
 
 if __name__ == '__main__':
     num_anchors = 1
     dim = 512
-    checkpoint_path = "../4TrainingWeights/experiment/one_anchor/one_anchor_input_size/448_seed_424_2018-12-27_01_19_43.494652/2018-12-27_01_43_31.599667_model.pth"
     df = main()
