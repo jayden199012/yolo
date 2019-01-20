@@ -2,20 +2,22 @@ import os
 import torch
 import torch.nn as nn
 import numpy as np
-import re
+import datetime
+import json
 import cv2
 import glob
 import pandas as pd
 import shutil
 from PIL import Image
-from statistics import mode
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
-import Launch_Functions as lf
+from generate_anchors import generate_anchor
+import logging
 
 # add this two libraries if you are not using windpws and wish to use mp
-#from itertools import repeat
-#from torch.multiprocessing import Pool
+# from itertools import repeat
+# from torch.multiprocessing import Pool
+
 
 class empty_layer(nn.Module):
     def __init__(self):
@@ -63,18 +65,18 @@ def parse_cfg(cfgfile):
 
         # append the final block when the loop is over
         blocks.append(temp_block)
-        blocks[0]["steps"] = blocks[0]["steps"].split(",")
-        blocks[0]["steps"] = [int(x) for x in blocks[0]["steps"]]
-        blocks[0]["scales"] = blocks[0]["scales"].split(",")
-        blocks[0]["scales"] = [float(x) for x in blocks[0]["scales"]]
-        int_rows = ["batch", "max_batches", "height", "width", "channels",
-                    "epochs", "burn_in", "max_batches"]
-        float_rows = ["momentum", "decay", "saturation", "exposure", "hue",
-                      "learning_rate", "rand_crop"]
-        for rows in int_rows:
-            blocks[0][rows] = int(blocks[0][rows])
-        for rows in float_rows:
-            blocks[0][rows] = float(blocks[0][rows])
+#        blocks[0]["steps"] = blocks[0]["steps"].split(",")
+#        blocks[0]["steps"] = [int(x) for x in blocks[0]["steps"]]
+#        blocks[0]["scales"] = blocks[0]["scales"].split(",")
+#        blocks[0]["scales"] = [float(x) for x in blocks[0]["scales"]]
+#        int_rows = ["batch", "max_batches", "height", "width", "channels",
+#                    "epochs", "burn_in", "max_batches"]
+#        float_rows = ["momentum", "decay", "saturation", "exposure", "hue",
+#                      "learning_rate", "rand_crop"]
+#        for rows in int_rows:
+#            blocks[0][rows] = int(blocks[0][rows])
+#        for rows in float_rows:
+#            blocks[0][rows] = float(blocks[0][rows])
         return blocks
 
 
@@ -148,25 +150,17 @@ def shortcut_layer_handling(module, index, layer, layer_type_dic):
     layer_type_dic['referred_relationship'][index] = (index + from_layer)
 
 
-def yolo_layer_handling(module, index, layer, layer_type_dic):
+def yolo_layer_handling(params, module, index, layer, layer_type_dic):
     anchor_index = [int(x) for x in (layer["mask"].split(","))]
-    anchors = re.split(',  |,', layer["anchors"])
-    num_anchors = int(len(anchors)/2)
-    anchors = np.reshape([float(x) for x in anchors], (num_anchors, 2))
-    anchors = anchors[anchor_index]
-    num_anchors = len(anchors)
-    classes = int(layer["classes"])
-    layer_type_dic["net_info"]["num_classes"] = classes
-    layer_type_dic["net_info"]["num_anchors"] = num_anchors
+    anchors = params['anchors'][anchor_index]
     yolo = yolo_layer(anchors)
     module.add_module("yolo_{}".format(index), yolo)
     layer_type_dic['yolo'].append(index)
 
 
-def create_module(blocks):
+def create_module(params, blocks):
     module_list = nn.ModuleList()
-    layer_type_dic = {"net_info": {},
-                      "conv": [],
+    layer_type_dic = {"conv": [],
                       "upsampling": [],
                       "shortcut": [],
                       "route_1": [],
@@ -174,11 +168,11 @@ def create_module(blocks):
                       "yolo": [],
                       "referred": [],
                       "referred_relationship": {}}
-    layer_type_dic["net_info"] = blocks[0]
-    in_channel = 3
+    params['width'] = params['height']
+    in_channel = params['channels']
     out_channels_list = []
 
-    for index, layer in enumerate(blocks[1:]):
+    for index, layer in enumerate(blocks):
         module = nn.Sequential()
 
         # conv layer
@@ -202,13 +196,13 @@ def create_module(blocks):
 
         # yolo layer
         elif layer["type"] == "yolo":
-            yolo_layer_handling(module, index, layer, layer_type_dic)
+            yolo_layer_handling(params, module, index, layer, layer_type_dic)
 
         out_channels_list.append(in_channel)
         module_list.append(module)
 
     for index, value in layer_type_dic.items():
-        if index not in ["net_info", "referred_relationship"]:
+        if index != "referred_relationship":
             layer_type_dic[index] = list(layer_type_dic[index])
 
     return layer_type_dic, module_list
@@ -271,7 +265,7 @@ def np_box_iou(box1, box2):
     return iou
 
 
-def filter_img_class(cls, image_pred, ind, nms_conf):
+def filter_img_class(cls, image_pred, ind, nms_thesh):
     image_pred_class = image_pred[image_pred[:, 6] == cls]
 
     # sort the detections such that the entry with the maximum
@@ -295,7 +289,7 @@ def filter_img_class(cls, image_pred, ind, nms_conf):
 
         # true will return 1 and false will return 0
         # Zero out all the detections that have IoU > treshhold
-        iou_mask = (ious < nms_conf).float().unsqueeze(1)
+        iou_mask = (ious < nms_thesh).float().unsqueeze(1)
         # only remove rows after the current index
         image_pred_class[i+1:] *= iou_mask
 
@@ -309,8 +303,9 @@ def filter_img_class(cls, image_pred, ind, nms_conf):
     return seq
 
 
-def filter_results(prediction, confidence, num_classes, nms_conf=0.4):
-    conf_mask = (prediction[:, :, 4] > confidence).float().unsqueeze(2)
+def filter_results(prediction, params):
+    conf_mask = (prediction[:, :, 4] >
+                 params['confidence']).float().unsqueeze(2)
     prediction = prediction*conf_mask
     y_coord = prediction[:, :, 1].unsqueeze(2)
 
@@ -340,7 +335,8 @@ def filter_results(prediction, confidence, num_classes, nms_conf=0.4):
         if image_pred.shape[0] == 0:
             continue
         # torch.max(imput, dim) which returns the number and the index
-        max_conf, class_index = torch.max(image_pred[:, 5:5 + num_classes], 1)
+        max_conf, class_index = torch.max(
+                image_pred[:, 5:5 + params['num_classes']], 1)
 
         # N * 1 tensor
         max_conf = max_conf.float().unsqueeze(1)
@@ -354,22 +350,21 @@ def filter_results(prediction, confidence, num_classes, nms_conf=0.4):
 
         # find the unique index in the picture thus find the classes
         img_classes = torch.unique(image_pred[:, 6])
-        
-        # replace for cls loop if you are not using windows, 
+
+        # replace for cls loop if you are not using windows,
         # for multiprocessing
-        
+
 #        with Pool(4) as pool:
 #            output = torch.cat(
 #                    pool.starmap(filter_img_class, zip(
 #                            img_classes, repeat(image_pred), repeat(ind),
 #                            repeat(nms_conf))), 1)
-        
+
         for cls in img_classes:
             # erform NMS
             # seq is a tuple of  batch_ind, min,ymin,xmax,ymax,object conf,
             # class prob, class index,  y_centre
-            seq = filter_img_class(cls, image_pred, ind, nms_conf)
- 
+            seq = filter_img_class(cls, image_pred, ind, params['nms_thesh'])
             if not write:
                 output = torch.cat(seq, 1)
                 write = True
@@ -416,28 +411,22 @@ def letterbox_image(img, inp_dim):
     w, h = inp_dim
     new_w = int(img_w * min(w/img_w, h/img_h))
     new_h = int(img_h * min(w/img_w, h/img_h))
-    resized_image = cv2.resize(img, (new_w,new_h), interpolation = cv2.INTER_CUBIC)
-    
+    resized_image = cv2.resize(img, (new_w, new_h),
+                               interpolation=cv2.INTER_CUBIC)
+
     canvas = np.full((inp_dim[1], inp_dim[0], 3), 128)
 
-    canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
-    
+    canvas[(h-new_h)//2:(h-new_h)//2 + new_h,
+           (w-new_w)//2:(w-new_w)//2 + new_w, :] = resized_image
+
     return canvas
+
 
 def prep_image(img, inp_dim):
     img = (letterbox_image(img, (inp_dim, inp_dim)))
-    img = img[:,:,::-1].transpose((2,0,1)).copy()
+    img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
     img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
     return img
-
-
-def get_test_input():
-    img = cv2.imread("dog-cycle-car.png")
-    img = cv2.resize(img, (608,608))          # Resize to the input dimension
-    img_ =  img[:,:,::-1].transpose((2,0,1))  # BGR -> RGB | H X W C -> C X H X W 
-    img_ = img_[np.newaxis,:,:,:]/255.0       # Add a channel at 0 (for batch) | Normalise
-    img_ = torch.from_numpy(img_).float()     # Convert to float                   # Convert to Variable
-    return img_
 
 
 def prep_labels(img_txt_path, name_list, label_csv_mame, selected_cls=False):
@@ -527,57 +516,6 @@ def detection_write(x, results, classes):
     return img
 
 
-def up_or_down(output, arg_list, threshhold, classes):
-    ball_mask_dic = {}
-    ball_dic = {}
-    highest_conf_dic = {}
-    ball_y_dic = {}
-    for index, cls in enumerate(classes):
-        ball_mask_dic[cls] = [output[:, 7] == index]
-        ball_dic[cls] = output[:, 8][ball_mask_dic[cls]]
-        try:
-            highest_conf_dic[cls] = torch.argmax(
-                    output[:, 5][ball_mask_dic[cls]])
-            ball_y_dic[cls] = ball_dic[cls][highest_conf_dic[cls]]
-        except (RuntimeError):
-            continue
-    if len(ball_y_dic) > 1:
-        highest_ball_y = min(ball_y_dic.values())
-        lowerst_ball_y = max(ball_y_dic.values())
-        distance = lowerst_ball_y - highest_ball_y
-        if distance > threshhold:
-            index = min(ball_y_dic, key=ball_y_dic.get)
-            arg_list.append(index)
-        else:
-            arg_list.append(4)
-    else:
-        index = min(ball_y_dic, key=ball_y_dic.get)
-        arg_list.append(index)
-
-
-def action_output(arg_list, previous_action, started_playing, playing):
-    if len(playing) > 16:
-        print("before it kills : {}".format(playing))
-        os.system("TASKKILL /F /IM vlc.exe")
-        started_playing.append(0)
-        previous_action.append(-1)
-        del playing[:]
-        del started_playing[:-1]
-    if len(arg_list) < 10:
-        return
-    else:
-        action = mode(arg_list)
-        print("current action : {}, previous actions: {}".format(action, previous_action[-1]))
-        if action != 4:
-            lf.launch_videos(action, previous_action[-1])
-            started_playing.append(1)
-            del playing[:]
-        previous_action.append(action)
-        del started_playing[:-1]
-        del previous_action[:-1]
-        del arg_list[:]
-
-
 def move_images(label_name, to_path, action_fn, action="copy", **kwargs):
     labels_df = action_fn(label_name, **kwargs)
     if action == "move":
@@ -609,4 +547,37 @@ def resize_all_img(new_w, new_h, from_path, to_path):
 
 def worker_init_fn(worker_id):
     np.random.seed(worker_id)
-     
+
+
+def _save_checkpoint(model, save_txt=True):
+    # global best_eval_result
+    time_now = str(datetime.datetime.now()).replace(
+                                   " ",  "_").replace(":",  "_")
+    checkpoint_path = os.path.join(model.params["sub_working_dir"],
+                                   time_now + ".pth")
+    model.params["pretrain_snapshot"] = checkpoint_path
+    torch.save(model.state_dict(), checkpoint_path)
+    logging.info(f"Model checkpoint saved to {checkpoint_path}")
+    if save_txt:
+        with open(f'{model.params["sub_working_dir"]}/{time_now}.txt', "w"
+                  ) as file:
+            params_ = model.params.copy()
+            params_['anchors'] = params_['anchors'].tolist()
+            file.write(json.dumps(params_, indent=4))
+            del params_
+
+
+def prep_params(params_dir, label_csv_mame):
+    with open(params_dir) as fp:
+        params = json.load(fp)
+    if type(params['anchors']) == 'list':
+        params['anchors'] = np.array(params['anchors'])
+    else:
+        params['anchors'] = generate_anchor(label_csv_mame,
+                                            params['width'],
+                                            params['height'],
+                                            num_clusters=params[
+                                                    'num_anchors']*3)
+    params['classes'] = load_classes('../4Others/color_ball.names')
+    params['conf_list'] = list(np.arange(start=0.2, stop=0.95, step=0.025))
+    return params

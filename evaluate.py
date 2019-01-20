@@ -4,13 +4,12 @@ import torch
 import time
 import pandas as pd
 import numpy as np
-from utilis import compute_ap, filter_results, load_classes
+from utilis import compute_ap, filter_results
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from utilis import parse_cfg,  my_collate
-from yolo_v3 import yolo_v3
+from utilis import parse_cfg,  my_collate,  prep_params
 from data import CustData
-from generate_anchors import set_anchors_to_model
+
 
 def bbox_iou_numpy(box1, box2):
     """Computes IoU between bounding boxes.
@@ -27,10 +26,12 @@ def bbox_iou_numpy(box1, box2):
     """
     area = (box2[:, 2] - box2[:, 0]) * (box2[:, 3] - box2[:, 1])
 
-    iw = np.minimum(np.expand_dims(box1[:, 2], axis=1), box2[:, 2]) - np.maximum(
+    iw = np.minimum(np.expand_dims(box1[:, 2], axis=1),
+                    box2[:, 2]) - np.maximum(
         np.expand_dims(box1[:, 0], 1), box2[:, 0]
     )
-    ih = np.minimum(np.expand_dims(box1[:, 3], axis=1), box2[:, 3]) - np.maximum(
+    ih = np.minimum(np.expand_dims(box1[:, 3], axis=1),
+                    box2[:, 3]) - np.maximum(
         np.expand_dims(box1[:, 1], 1), box2[:, 1]
     )
 
@@ -47,15 +48,15 @@ def bbox_iou_numpy(box1, box2):
     return intersection / ua
 
 
-def eval_score(model, dataloader, cuda):
+def eval_score(model, dataloader):
     model.eval()
     with torch.no_grad():
         for step, samples in enumerate(dataloader):
-            if cuda:
+            if model.params['cuda']:
                 images, labels = samples["image"].to('cuda'), samples["label"]
             else:
                 images, labels = samples["image"], samples["label"]
-            losses = model(images, cuda, is_training=True, labels=labels)
+            losses = model(images, is_training=True, labels=labels)
             if not step:
                 evaluate_loss = losses.copy()
             else:
@@ -66,11 +67,10 @@ def eval_score(model, dataloader, cuda):
             return evaluate_loss
 
 
-def compute_map(num_classes, classes, all_detections, all_annotations,
-                conf_index, confidence, iou_conf, map_frame, train,
-                actual_num_labels):
+def compute_map(all_detections, all_annotations, conf_index,
+                map_frame, train, actual_num_labels, params):
     average_precisions = {}
-    for label in range(num_classes):
+    for label in range(params['num_classes']):
         true_positives = []
         scores = []
         num_annotations = 0
@@ -97,7 +97,7 @@ def compute_map(num_classes, classes, all_detections, all_annotations,
                 assigned_annotation = np.argmax(overlaps, axis=1)
                 max_overlap = overlaps[0, assigned_annotation]
 
-                if max_overlap >= iou_conf and \
+                if max_overlap >= params['iou_conf'] and \
                         assigned_annotation not in detected_annotations:
                     true_positives.append(1)
                     detected_annotations.append(assigned_annotation)
@@ -133,32 +133,31 @@ def compute_map(num_classes, classes, all_detections, all_annotations,
 #    mAP = np.mean(list(average_precisions.values()))
     mAP = sum(list(average_precisions.values()))/actual_num_labels
     if not train:
-        print(f"Average Precisions when confidence = {confidence}:")
-        for c, ap in zip(classes, average_precisions.values()):
-            map_frame.loc[c, confidence] = ap
+        print(f"Average Precisions when confidence = {params['confidence']}:")
+        for c, ap in zip(params['classes'], average_precisions.values()):
+            map_frame.loc[c, params['confidence']] = ap
             print(f"+ Class '{c}' - AP: {ap}")
         print(f"mAP: {mAP}")
-        map_frame.loc['mAP', confidence] = mAP
+        map_frame.loc['mAP', params['confidence']] = mAP
         print(f"average_precisions: {average_precisions}")
         return mAP, list(average_precisions.values()), map_frame
     else:
         return mAP, list(average_precisions.values())
 
 
-def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
-            train=False, specific_conf=0.5, loop_conf=False, nms_conf=0.5):
+def get_map(model, dataloader, train=False, loop_conf=False):
     actual_num_labels = 0
     if loop_conf:
-        loop_conf = conf_list
+        loop_conf = model.params['conf_list']
     else:
-        loop_conf = [specific_conf]
+        loop_conf = [model.params['specific_conf']]
     if not train:
-        rows = classes + ["mAP"]
+        rows = model.params['classes'] + ["mAP"]
         map_frame = pd.DataFrame(index=rows, columns=loop_conf)
     else:
         map_frame = None
     model.eval()
-    num_classes = model.num_classes
+    num_classes = model.params['num_classes']
     all_detections = []
     specific_conf_map = None
     specific_conf_ap = None
@@ -168,23 +167,23 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
     all_annotations = []
     with torch.no_grad():
         for samples in dataloader:
-            if cuda:
+            if model.params['cuda']:
                 image, labels = samples["image"].to('cuda'), samples["label"]
             else:
                 image, labels = samples["image"], samples["label"]
 
             img_size = image.shape[-1]
-            outputs = model(image, cuda)
+            outputs = model(image)
 
             for conf_index, confidence in enumerate(loop_conf):
                 # gets output at each object confidence
+                model.params['confidence'] = confidence
                 for img in outputs:
                     all_detections[conf_index].append(
                         [np.array([]) for _ in range(num_classes)]
                         )
-                    outputs_ = filter_results(img.unsqueeze(0), confidence,
-                                              num_classes, nms_conf)
-                    
+                    outputs_ = filter_results(img.unsqueeze(0), model.params)
+
                     # n our model if no results it outputs int 0
                     if outputs_ is not 0:
                         # Get predicted boxes, confidence scores and labels
@@ -220,17 +219,18 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
                     annotation_boxes *= img_size
 
                     for label in range(num_classes):
-                        all_annotations[-1][label] = annotation_boxes[annotation_labels == label, :]
+                        all_annotations[-1][label] = annotation_boxes[
+                                annotation_labels == label, :]
                 actual_num_labels = np.max([actual_num_labels, num_labels])
         for conf_index, confidence in enumerate(loop_conf):
+            model.params['confidence'] = confidence
             print(f"Running for object confidence : {confidence}")
             # if train it results consists mAP, average_precisions map_frame
             # else: mAP, average_precisions
             print(actual_num_labels)
-            results = compute_map(num_classes, classes, all_detections,
-                                  all_annotations, conf_index, confidence,
-                                  iou_conf, map_frame, train,
-                                  actual_num_labels)
+            results = compute_map(all_detections, all_annotations, conf_index,
+                                  map_frame, train, actual_num_labels,
+                                  model.params)
             if conf_index == 0:
                 best_map = results[0]
                 best_ap = results[1]
@@ -241,7 +241,7 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
                     best_map = results[0]
                     best_ap = results[1]
                     best_conf = confidence
-            if np.round(confidence, 3) == specific_conf:
+            if np.round(confidence, 3) == model.params['specific_conf']:
                 specific_conf_map = results[0]
                 specific_conf_ap = results[1]
 
@@ -255,26 +255,19 @@ def get_map(model, dataloader, cuda, conf_list, iou_conf, classes,
                specific_conf_ap, map_frame
 
 
-def main():
-    cuda = True
-    specific_conf = 0.25
-    iou_conf = 0.5
-    cfg_path = "../4Others/color_ball_one_anchor.cfg"
+# %%
+
+def main(param_dir):
+    cfg_path = "../4Others/yolo.cfg"
     test_root_dir = "../1TestData"
     test_label_csv_mame = '../1TestData/label.csv'
-    classes = load_classes('../4Others/color_ball.names')
     blocks = parse_cfg(cfg_path)
-    model = yolo_v3(blocks)
-#    set_anchors_to_model(model, 9, test_label_csv_mame, 608,
-#                             608)
-    model.net["height"] = 448
-    conf_list = np.arange(start=0.2, stop=0.75, step=0.025)
-    checkpoint_path = "../4TrainingWeights/experiment/one_anchor/one_anchor_input_size/448_seed_424_2018-12-27_01_19_43.494652/2018-12-27_01_43_31.599667_model.pth"
-    checkpoint = torch.load(checkpoint_path)
-    model.load_state_dict(checkpoint)
-    model = model.cuda()
+    label_csv_mame = '../1TrainData/label.csv'
+    params = prep_params(param_dir, label_csv_mame)
+    from yolo_v3 import yolo_v3
+    model = yolo_v3(params, blocks)
     test_transform = transforms.Compose(
-            [transforms.Resize(model.net["height"]), transforms.ToTensor(),
+            [transforms.Resize(model.params["height"]), transforms.ToTensor(),
              transforms.Normalize([0.485, 0.456, 0.406],
                                   [0.229, 0.224, 0.225])])
 
@@ -282,13 +275,12 @@ def main():
                          transform=test_transform)
 
     test_loader = DataLoader(test_data, shuffle=False,
-                             batch_size=model.net["batch"],
+                             batch_size=model.params["batch_size"],
                              collate_fn=my_collate,
-                             num_workers=4)
+                             num_workers=0)
     start = time.time()
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
-        map_frame = get_map(model, test_loader, cuda, conf_list, iou_conf,
-                            classes, False, specific_conf, False)
+        map_frame = get_map(model, test_loader, train=False, loop_conf=False)
     print(time.time() - start)
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame
@@ -296,8 +288,9 @@ def main():
 
 if __name__ == "__main__":
     start = time.time()
+    param_dir = "../4TrainingWeights/experiment\trial/2019-01-20_02_05_53.233385/2019-01-20_02_45_53.742302.txt"
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
-        map_frame = main()
+        map_frame = main(param_dir)
     print(f"time spend: {time.time()-start}")
     print(f"Best mAP is : {best_map}")
     print(f"Best AP is : {best_ap}")
