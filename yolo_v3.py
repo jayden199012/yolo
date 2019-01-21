@@ -24,7 +24,7 @@ class yolo_v3(nn.Module):
                                              5) * self.params['num_anchors']
         self.layer_type_dic, self.module_list = create_module(
                                                     self.params, blocks)
-
+        print(self.module_list)
         self.mse_loss = nn.MSELoss()
         self.bce_loss = nn.BCELoss()
         self.losses_name = ["total_loss", "x", "y", "w", "h", "conf", "cls"]
@@ -370,6 +370,7 @@ class yolo_v3(nn.Module):
 
                 # transform anchor box to torch tensor
                 # returns a num_anchors * 4 tensor
+                print(f"this is scaled_anchors {scaled_anchors}")
                 anchor_box = torch.cat((torch.zeros(self.params['num_anchors'],
                                                     2),
                                         torch.FloatTensor(

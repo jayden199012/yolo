@@ -567,9 +567,11 @@ def _save_checkpoint(model, save_txt=True):
             del params_
 
 
-def prep_params(params_dir, label_csv_mame):
+def prep_params(params_dir, label_csv_mame, experiment_params=False):
     with open(params_dir) as fp:
         params = json.load(fp)
+    if experiment_params:
+        params = {**params, **experiment_params}
     if type(params['anchors']) == 'list':
         params['anchors'] = np.array(params['anchors'])
     else:

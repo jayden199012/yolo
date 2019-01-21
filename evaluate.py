@@ -288,7 +288,7 @@ def main(param_dir):
 
 if __name__ == "__main__":
     start = time.time()
-    param_dir = "../4TrainingWeights/experiment\trial/2019-01-20_02_05_53.233385/2019-01-20_02_45_53.742302.txt"
+    param_dir = "../4TrainingWeights/experiment/trial/2019-01-20_02_05_53.233385/2019-01-20_02_45_53.742302.txt"
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = main(param_dir)
     print(f"time spend: {time.time()-start}")
