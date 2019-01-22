@@ -1,7 +1,8 @@
 from sklearn.model_selection import StratifiedShuffleSplit
-from utilis import move_images, prep_labels, load_classes, parse_cfg
+from utilis import move_images, prep_labels, load_classes, parse_cfg,\
+                   move_images_cv
 from yolo_v3 import yolo_v3
-from train import main
+# from train import main
 import random
 import numpy as np
 import pandas as pd
@@ -20,37 +21,47 @@ def move_not_zero(labels_df, label_name):
     return labels_df
 
 
-def split_train(label_name, train_size, random_state=0):
+def split_train(label_name, train_size, random_state=0, n_splits=1,
+                cv=False, train_cv_path=None, valid_cv_path=None,
+                name_list=None):
     # split
-    sss = StratifiedShuffleSplit(n_splits=1, test_size=(1-train_size),
+    sss = StratifiedShuffleSplit(n_splits=n_splits, test_size=(1-train_size),
                                  random_state=random_state)
     labels_df = pd.read_csv(label_name)
     print(f"items per class in the original dataframe: \
           \n{labels_df.groupby('c').size()}")
     # get split index
-    train_index, others_index = next(iter(
-                                   sss.split(labels_df.img_name, labels_df.c)))
-    print(f"number of training images before removing duplicates image names: \
-          \n{np.size(train_index)}")
-    print(f"number of other images before removing duplicates image names: \
-          \n{np.size(others_index)}")
+    for train_index, others_index in sss.split(
+            labels_df.img_name, labels_df.c):
+        print(f"number of training images before removing duplicates image" +
+              f"names:{np.size(train_index)}")
+        print(f"number of test images before removing duplicates image" +
+              f"names: {np.size(others_index)}")
 
-    # train dataframe with possible dupliocates
-    train_temp = labels_df.iloc[train_index, :]
-    print(f"items per class before removing duplicates image names:\
-          \n{train_temp.groupby('c').size()}")
+        # train dataframe with possible dupliocates
+        train_temp = labels_df.iloc[train_index, :]
+        print(f"items per class before removing duplicates image names:" +
+              f"{train_temp.groupby('c').size()}")
 
-    # remove duplicates image names
-    train_unique = pd.unique(train_temp.img_name)
-    print(f"number of training images after removing duplicate image names: \
-          \n{len(train_unique)}")
+        # remove duplicates image names
+        train_unique = pd.unique(train_temp.img_name)
+        print(f"number of training images after removing duplicate image" +
+              f"names:{len(train_unique)}")
 
-    # new train dataframe with unique images names
-    train = labels_df[labels_df.img_name.isin(train_unique)]
-    print(f"items per class with unique image names: \
-          \n{train.groupby('c').size()}")
-    print(f"Sampled {len(train)} images out of {len(labels_df)} images")
-    return train
+        # new train dataframe with unique images names
+        final_train_idx = labels_df.img_name.isin(train_unique)
+        train = labels_df[final_train_idx]
+        print(f"items per class with unique image names: \
+              \n{train.groupby('c').size()}")
+        print(f"Sampled {len(train)} images out of {len(labels_df)} images")
+        if cv:
+            valid = labels_df[~final_train_idx]
+            move_images_cv([train, valid], [train_cv_path, valid_cv_path],
+                           name_list)
+            yield
+        else:
+            return train
+    return
 
 
 # label_name = '../1TestData/label.csv'
