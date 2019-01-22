@@ -35,7 +35,8 @@ class yolo_v3(nn.Module):
         if self.params['cuda']:
             self = self.cuda()
 
-    def fit(self, train_loader, test_loader, loop_conf=False):
+    def fit(self, train_loader, test_loader, vaild_loader=False,
+            loop_conf=False):
         # inituate a dictionry to store all the logs for tensorboard
         ts_writer = {}
 
@@ -148,10 +149,20 @@ class yolo_v3(nn.Module):
                             continue
 
                     evaluate_running_loss = eval_score(self, test_loader)
+                    logging.info(f"evaluate_running_loss:\
+                                 {evaluate_running_loss}")
                     for i, name in enumerate(self.losses_name):
                         ts_writer["tensorboard_writer"].add_scalar(
                                 "evel_" + name, evaluate_running_loss[i],
                                 self.params["global_step"])
+                    if vaild_loader:
+                        self.params['test_best_map'] = get_map(
+                                self, vaild_loader,
+                                confidence=self.params['confidence'])[0]
+                        ts_writer["tensorboard_writer"].add_scalar(
+                                    "test_best_map",
+                                    self.params['test_best_map'],
+                                    self.params["global_step"])
                     self.train(True)
                     eva = 0
                 if save and (epoch+1) % self.params['save_epoch'] == 0:
@@ -163,6 +174,12 @@ class yolo_v3(nn.Module):
             map_frame = get_map(self, test_loader, train=False, loop_conf=True)
         self.params['best_map'] = best_map
         self.params['confidence'] = best_conf
+        if vaild_loader:
+            self.params['test_best_map'] = get_map(
+                    self, vaild_loader, confidence=self.params['confidence'])[0]
+            ts_writer["tensorboard_writer"].add_scalar(
+                        "test_best_map", self.params['test_best_map'],
+                        self.params["global_step"])
         _save_checkpoint(self)
         for index, mr_name in enumerate(map_results_names):
             try:

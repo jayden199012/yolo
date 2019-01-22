@@ -152,7 +152,7 @@ def shortcut_layer_handling(module, index, layer, layer_type_dic):
 
 def yolo_layer_handling(params, module, index, layer, layer_type_dic):
     a = len(layer_type_dic['yolo']) * params['num_anchors']
-    layer["mask"] = range(a, a + 3)
+    layer["mask"] = range(a, a + params['num_anchors'])
     anchors = params['anchors'][layer["mask"]]
     yolo = yolo_layer(anchors)
     module.add_module("yolo_{}".format(index), yolo)
@@ -531,13 +531,13 @@ def move_images(label_name, to_path, action_fn, action="copy", **kwargs):
 
 def move_images_cv(dfs, to_paths, name_list):
     for df, to_path in zip(dfs, to_paths):
-        for images in df.iloc[:, 0]:
-            if not os.path.exists(to_path):
+        if not os.path.exists(to_path):
                 os.makedirs(to_path)
+        for images in df.iloc[:, 0]:
             shutil.copy(images, to_path)
             shutil.copy(images[:-3] + 'txt', to_path)
-            prep_labels(f"{to_path}*.txt", name_list,
-                        f"{to_path}label.csv")
+        prep_labels(f"{to_path}*.txt", name_list,
+                    f"{to_path}label.csv")
 
 
 def resize_all_img(new_w, new_h, from_path, to_path):
@@ -584,6 +584,9 @@ def prep_params(params_dir, label_csv_mame, experiment_params=False):
         params = json.load(fp)
     if experiment_params:
         params = {**params, **experiment_params}
+    params['width'] = params['height']
+    print(params['width'])
+    print(params['height'])
     if type(params['anchors']) == 'list':
         params['anchors'] = np.array(params['anchors'])
     else:

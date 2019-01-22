@@ -151,9 +151,11 @@ def compute_map(all_detections, all_annotations, conf_index,
         return mAP, list(average_precisions.values())
 
 
-def get_map(model, dataloader, train=False, loop_conf=False):
+def get_map(model, dataloader, train=False, loop_conf=False, confidence=False):
     actual_num_labels = 0
-    if loop_conf:
+    if confidence:
+        loop_conf = confidence
+    elif loop_conf:
         loop_conf = model.params['conf_list']
     else:
         loop_conf = [model.params['specific_conf']]

@@ -6,15 +6,15 @@ from torch.utils.data import Dataset
 from utilis import letterbox_image
 import cv2
 
+
 class CustData(Dataset):
 
-    def __init__(self, csv_file, root_dir,
+    def __init__(self, csv_file,
                  pre_trans=None, transform=None, post_trans=None,
                  detection_phase=False):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
-            root_dir (string): Directory with all the images.
             pre_trans (callable, optional): Custom transforms that applies
             to both the images and the labels
             transform (callable, optional): Optional transform to be applied
@@ -28,7 +28,6 @@ class CustData(Dataset):
             specify seperately
         """
         self.label_frame = pd.read_csv(csv_file)
-        self.root_dir = root_dir
         self.pre_trans = pre_trans
         self.transform = transform
         self.post_trans = post_trans

@@ -12,9 +12,10 @@ from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop
 
 
-def run_training(params, label_csv_mame, img_txt_path, root_dir, test_root_dir,
+def run_training(params, label_csv_mame, img_txt_path,
                  name_list, test_label_csv_mame, test_img_txt_path,
-                 cfg_path, params_dir):
+                 cfg_path, params_dir, valid_label_csv_mame=False,
+                 valid_img_txt_path=False):
     random.seed(params['seed'])
     np.random.seed(params['seed'])
     torch.manual_seed(params['seed'])
@@ -39,16 +40,17 @@ def run_training(params, label_csv_mame, img_txt_path, root_dir, test_root_dir,
              transforms.Normalize([0.485, 0.456, 0.406],
                                   [0.229, 0.224, 0.225])
              ])
-
+    print("this is height {params['width']}")
+    print("this is height {params['height']}")
     test_transform = transforms.Compose(
             [transforms.Resize(params["height"]), transforms.ToTensor(),
              transforms.Normalize([0.485, 0.456, 0.406],
                                   [0.229, 0.224, 0.225])])
 
-    train_data = CustData(label_csv_mame, root_dir,
+    train_data = CustData(label_csv_mame,
                           pre_trans=pre_trans,
                           transform=train_transform)
-    test_data = CustData(test_label_csv_mame, test_root_dir,
+    test_data = CustData(test_label_csv_mame,
                          transform=test_transform)
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=params["batch_size"],
@@ -61,9 +63,21 @@ def run_training(params, label_csv_mame, img_txt_path, root_dir, test_root_dir,
                              num_workers=params['num_workers'],
                              worker_init_fn=worker_init_fn)
     model = yolo_v3(params, blocks)
+
     # Start training
-    best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
-        map_frame = model.fit(train_loader, test_loader)
+    if valid_label_csv_mame:
+            valid_data = CustData(valid_label_csv_mame,
+                                  transform=test_transform)
+            valid_loader = DataLoader(valid_data, shuffle=False,
+                                      batch_size=params["batch_size"],
+                                      collate_fn=my_collate,
+                                      num_workers=params['num_workers'],
+                                      worker_init_fn=worker_init_fn)
+            best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
+                map_frame = model.fit(train_loader, valid_loader, test_loader)
+    else:
+        best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
+            map_frame = model.fit(train_loader, test_loader)
 
     return best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame
@@ -72,8 +86,6 @@ def run_training(params, label_csv_mame, img_txt_path, root_dir, test_root_dir,
 if __name__ == "__main__":
     config = {'label_csv_mame': '../1TrainData/label.csv',
               'img_txt_path': "../1TrainData/*.txt",
-              'root_dir': "../1TrainData",
-              'test_root_dir': "../1TestData",
               # label csv column names
               'name_list': ["img_name", "c", "gx", "gy", "gw", "gh"],
               'test_label_csv_mame': '../1TestData/label.csv',
@@ -84,3 +96,4 @@ if __name__ == "__main__":
     torch.backends.cudnn.enabled = False
     torch.backends.cudnn.benchmark = False
     run_training(params=params, **config)
+
