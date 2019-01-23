@@ -150,7 +150,7 @@ class yolo_v3(nn.Module):
 
                     evaluate_running_loss = eval_score(self, test_loader)
                     logging.info(f"evaluate_running_loss:\
-                                 {evaluate_running_loss}")
+                                 {evaluate_running_loss[0]}")
                     for i, name in enumerate(self.losses_name):
                         ts_writer["tensorboard_writer"].add_scalar(
                                 "evel_" + name, evaluate_running_loss[i],
@@ -158,7 +158,7 @@ class yolo_v3(nn.Module):
                     if vaild_loader:
                         self.params['test_best_map'] = get_map(
                                 self, vaild_loader,
-                                confidence=self.params['confidence'])[0]
+                                confidence=[self.params['confidence']])[0]
                         ts_writer["tensorboard_writer"].add_scalar(
                                     "test_best_map",
                                     self.params['test_best_map'],
@@ -169,14 +169,17 @@ class yolo_v3(nn.Module):
                     _save_checkpoint(self)
                     save = 0
             lr_scheduler.step()
-
-        best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
-            map_frame = get_map(self, test_loader, train=False, loop_conf=True)
-        self.params['best_map'] = best_map
-        self.params['confidence'] = best_conf
+        print(f"at least it reached before get_map")
+#        best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
+#            map_frame = get_map(self, test_loader, train=False, loop_conf=True)
+        map_results = get_map(self, test_loader, train=False, loop_conf=True)
+        self.params['best_map'] = map_results[0]
+        self.params['confidence'] = map_results[2]
+        print(f"at least it reached here")
         if vaild_loader:
             self.params['test_best_map'] = get_map(
-                    self, vaild_loader, confidence=self.params['confidence'])[0]
+                    self, vaild_loader,
+                    confidence=[self.params['confidence']])[0]
             ts_writer["tensorboard_writer"].add_scalar(
                         "test_best_map", self.params['test_best_map'],
                         self.params["global_step"])
@@ -186,16 +189,15 @@ class yolo_v3(nn.Module):
                 ts_writer["tensorboard_writer"].add_scalar(
                         mr_name, map_results[index],
                         self.params["global_step"])
-            except AttributeError:
+            except (AttributeError):
                 continue
         # model.train(True)
         logging.info("Bye~")
         if self.params['return_csv']:
-            map_frame.to_csv(
+            map_results[5].to_csv(
                     f"{self.params['sub_working_dir']}/final_performance.csv",
                     index=True)
-        return best_map, best_ap, best_conf, specific_conf_map,\
-            specific_conf_ap, map_frame
+        return tuple(map_results)
 
     def predict(self, x, layer, batch_size):
         anchors = layer[0].anchors
@@ -604,3 +606,4 @@ class yolo_v3(nn.Module):
 
                     conv_weights = conv_weights.view_as(conv.weight.data)
                     conv.weight.data.copy_(conv_weights)
+
