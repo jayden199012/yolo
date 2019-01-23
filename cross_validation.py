@@ -29,11 +29,9 @@ def cross_validation():
     torch.backends.cudnn.benchmark = False
     # you can specify any tuning hyper-parammeters here , but do not use
     # np.arrange() as it will result an error for json.dumps()
-    tune_params = {'seed': list(range(1, 6)),
-                   'batch_size': [2, 4, 6],
-                   'height': [416, 512],
-                   "num_anchors": [1, 3],
-                   'rand_crop': [0.1, 0.2, 0.3, 0.4]
+    tune_params = {'seed': list(range(1, 3)),
+                   'batch_size': [2, 3],
+                   'height': [416, 448]
                    }
     index, values = zip(*tune_params.items())
     experiments_params = [dict(zip(index, v)) for v in it.product(*values)]
@@ -42,7 +40,7 @@ def cross_validation():
     prep_labels(**prep_label_config)
     cv_results_list = []
     for experiment_params in experiments_params:
-        cv_split_config = {'n_splits': 5,
+        cv_split_config = {'n_splits': 2,
                            'cv': True,
                            'train_size': 0.5,
                            'name_list': config['name_list'],
@@ -55,8 +53,6 @@ def cross_validation():
             params = prep_params(config['params_dir'],
                                  config['label_csv_mame'],
                                  experiment_params)
-            print(params['width'])
-            print(params['height'])
             best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
                 map_frame = run_training(params=params, **config)
             cv_results_list.append(params)

@@ -60,6 +60,7 @@ class CustData(Dataset):
         return samples
 
 
+
 class RandomCrop:
 
     def __init__(self, jitter=0.2, inp_dim=416):
@@ -77,8 +78,13 @@ class RandomCrop:
         new_h = new_ymax - new_ymin
         size = np.max([new_w, new_h])
         off_set = np.abs(new_w-new_h)/size
-        pix = pix[int(new_ymin * w):math.ceil(new_ymax * w),
-                  int(new_xmin * h):math.ceil(new_xmax * h)]
+        try:
+            pix = pix[int(new_ymin * w):math.ceil(new_ymax * w),
+                      int(new_xmin * h):math.ceil(new_xmax * h)]
+        except IndexError:
+            print(f"first int : {int(new_ymin * w):math.ceil(new_ymax * w)}")
+            print(f"second int : {int(new_xmin * h):math.ceil(new_xmax * h)}")
+            return
         pix = letterbox_image(pix, (self.inp_dim, self.inp_dim))
         adjust_width = 0 if new_w > new_h else 1
         if adjust_width:

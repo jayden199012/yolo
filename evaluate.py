@@ -235,7 +235,7 @@ def get_map(model, dataloader, train=False, loop_conf=False, confidence=False):
             print(f"Running for object confidence : {confidence}")
             # if train it results consists mAP, average_precisions map_frame
             # else: mAP, average_precisions
-            print(actual_num_labels)
+            print(f"actual_num_labels : {actual_num_labels}")
             results = compute_map(all_detections, all_annotations, conf_index,
                                   map_frame, train, actual_num_labels,
                                   model.params)
@@ -305,3 +305,4 @@ if __name__ == "__main__":
     print(f"specific conf mAP is : {specific_conf_map}")
     print(f"specific conf AP is : {specific_conf_ap}")
     print(f"Best conf is : {best_conf}")
+

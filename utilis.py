@@ -585,8 +585,6 @@ def prep_params(params_dir, label_csv_mame, experiment_params=False):
     if experiment_params:
         params = {**params, **experiment_params}
     params['width'] = params['height']
-    print(params['width'])
-    print(params['height'])
     if type(params['anchors']) == 'list':
         params['anchors'] = np.array(params['anchors'])
     else:

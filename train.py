@@ -29,6 +29,8 @@ def run_training(params, label_csv_mame, img_txt_path,
     prep_labels(test_img_txt_path, name_list, test_label_csv_mame)
 
     blocks = parse_cfg(cfg_path)
+    print(f"this is train height")
+    print(params["height"])
     pre_trans = RandomCrop(jitter=params['rand_crop'],
                            inp_dim=params["height"])
     train_transform = transforms.Compose(
@@ -40,8 +42,8 @@ def run_training(params, label_csv_mame, img_txt_path,
              transforms.Normalize([0.485, 0.456, 0.406],
                                   [0.229, 0.224, 0.225])
              ])
-    print("this is height {params['width']}")
-    print("this is height {params['height']}")
+    print(f"this is test height")
+    print(params["height"])
     test_transform = transforms.Compose(
             [transforms.Resize(params["height"]), transforms.ToTensor(),
              transforms.Normalize([0.485, 0.456, 0.406],
@@ -66,15 +68,21 @@ def run_training(params, label_csv_mame, img_txt_path,
 
     # Start training
     if valid_label_csv_mame:
-            valid_data = CustData(valid_label_csv_mame,
-                                  transform=test_transform)
-            valid_loader = DataLoader(valid_data, shuffle=False,
-                                      batch_size=params["batch_size"],
-                                      collate_fn=my_collate,
-                                      num_workers=params['num_workers'],
-                                      worker_init_fn=worker_init_fn)
-            best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
-                map_frame = model.fit(train_loader, valid_loader, test_loader)
+        print(f"this is valid height")
+        print(params["height"])
+        valid_transform = transforms.Compose(
+            [transforms.Resize(params["height"]), transforms.ToTensor(),
+             transforms.Normalize([0.485, 0.456, 0.406],
+                                  [0.229, 0.224, 0.225])])
+        valid_data = CustData(valid_label_csv_mame,
+                              transform=valid_transform)
+        valid_loader = DataLoader(valid_data, shuffle=False,
+                                  batch_size=params["batch_size"],
+                                  collate_fn=my_collate,
+                                  num_workers=params['num_workers'],
+                                  worker_init_fn=worker_init_fn)
+        best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
+            map_frame = model.fit(train_loader, valid_loader, test_loader)
     else:
         best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
             map_frame = model.fit(train_loader, test_loader)
@@ -96,4 +104,3 @@ if __name__ == "__main__":
     torch.backends.cudnn.enabled = False
     torch.backends.cudnn.benchmark = False
     run_training(params=params, **config)
-
