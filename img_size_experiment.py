@@ -1,17 +1,15 @@
+from __future__ import division
+
+import torch
 from sklearn.model_selection import StratifiedShuffleSplit
-from utilis import move_images, prep_labels, load_classes, parse_cfg
-from yolo_v3 import yolo_v3
-from train import main
-import random
-import numpy as np
-import pandas as pd
-import pickle
-import shutil
+from utilis import prep_params, move_images, move_images_cv
+from train import run_training
+import itertools as it
+import datetime
 import os
 import time
-import torch
-import logging
-import datetime
+import pandas as pd
+import numpy as np
 
 
 def move_not_zero(labels_df, label_name):
@@ -20,119 +18,104 @@ def move_not_zero(labels_df, label_name):
     return labels_df
 
 
-def split_train(label_name, train_size, random_state=0):
+def split_train(label_name, train_size, random_state=0, n_splits=1,
+                cv=False, train_cv_path=None, valid_cv_path=None,
+                name_list=None):
     # split
-    sss = StratifiedShuffleSplit(n_splits=1, test_size=(1-train_size),
+    sss = StratifiedShuffleSplit(n_splits=n_splits, test_size=(1-train_size),
                                  random_state=random_state)
     labels_df = pd.read_csv(label_name)
     print(f"items per class in the original dataframe: \
           \n{labels_df.groupby('c').size()}")
     # get split index
-    train_index, others_index = next(iter(
-                                   sss.split(labels_df.img_name, labels_df.c)))
-    print(f"number of training images before removing duplicates image names: \
-          \n{np.size(train_index)}")
-    print(f"number of other images before removing duplicates image names: \
-          \n{np.size(others_index)}")
+    for train_index, others_index in sss.split(
+            labels_df.img_name, labels_df.c):
+        print(f"number of training images before removing duplicates image" +
+              f"names:{np.size(train_index)}")
+        print(f"number of test images before removing duplicates image" +
+              f"names: {np.size(others_index)}")
 
-    # train dataframe with possible dupliocates
-    train_temp = labels_df.iloc[train_index, :]
-    print(f"items per class before removing duplicates image names:\
-          \n{train_temp.groupby('c').size()}")
+        # train dataframe with possible dupliocates
+        train_temp = labels_df.iloc[train_index, :]
+        print(f"items per class before removing duplicates image names:" +
+              f"{train_temp.groupby('c').size()}")
 
-    # remove duplicates image names
-    train_unique = pd.unique(train_temp.img_name)
-    print(f"number of training images after removing duplicate image names: \
-          \n{len(train_unique)}")
+        # remove duplicates image names
+        train_unique = pd.unique(train_temp.img_name)
+        print(f"number of training images after removing duplicate image" +
+              f"names:{len(train_unique)}")
 
-    # new train dataframe with unique images names
-    train = labels_df[labels_df.img_name.isin(train_unique)]
-    print(f"items per class with unique image names: \
-          \n{train.groupby('c').size()}")
-    print(f"Sampled {len(train)} images out of {len(labels_df)} images")
-    return train
+        # new train dataframe with unique images names
+        final_train_idx = labels_df.img_name.isin(train_unique)
+        train = labels_df[final_train_idx]
+        print(f"items per class with unique image names: \
+              \n{train.groupby('c').size()}")
+        print(f"Sampled {len(train)} images out of {len(labels_df)} images")
+        if cv:
+            valid = labels_df[~final_train_idx]
+            move_images_cv([train, valid], [train_cv_path, valid_cv_path],
+                           name_list)
+            yield
+        else:
+            return train
+    return
 
 
-# label_name = '../1TestData/label.csv'
-def compare():
+if __name__ == "__main__":
     date_time_now = str(
         datetime.datetime.now()).replace(" ", "_").replace(":", "_")
-    compare_path = f"../5Compare/img_size/{date_time_now}/"
+    compare_path = f"../5Compare/batch_size/{date_time_now}/"
     if not os.path.exists(compare_path):
         os.makedirs(compare_path)
-    config_name = "exp_config.p"
-    conf_list = np.arange(start=0.1, stop=0.95, step=0.025)
-    seed_range = range(420, 430)
+
+    config = {'label_csv_mame': '../1TrainData/label.csv',
+              'img_txt_path': "../1TrainData/*.txt",
+              # label csv column names
+              'name_list': ["img_name", "c", "gx", "gy", "gw", "gh"],
+              'test_label_csv_mame': '../1TestData/label.csv',
+              'test_img_txt_path': "../1TestData/*.txt",
+              'cfg_path': "../4Others/yolo.cfg",
+              'params_dir': '../4Others/params.txt'}
+
+    # turn cudnn on or off depends on situation
+    torch.backends.cudnn.enabled = False
+    torch.backends.cudnn.benchmark = False
+
     to_path_list = {"../250_to_300_imgs/": 1.05/7,
                     "../400_to_450_imgs/": 1/4,
                     "../550_to_600_imgs/": 3/7,
                     "../700_to_750_imgs/": 4.7/7}
-    classes = load_classes('../4Others/color_ball.names')
-    cfg_path = "../4Others/color_ball.cfg"
-    blocks = parse_cfg(cfg_path)
-    model = yolo_v3(blocks)
-    model.load_weights("../4Weights/yolov3.weights", cust_train_zero=True)
-    model.net['img_sampling_info'] = to_path_list
-    with open(compare_path + config_name, "wb") as fp:
-        pickle.dump(model.net, fp, protocol=pickle.HIGHEST_PROTOCOL)
-    time_taken_df = pd.DataFrame(columns=list(seed_range))
+
+    '''
+        you can specify more layered experiments here , but do not use
+        np.arrange() as it will result an error for json.dumps()
+    '''
+    tune_params = {'seed': list(range(424, 428)),
+                   }
+
+    index, values = zip(*tune_params.items())
+    experiments_params = [dict(zip(index, v)) for v in it.product(*values)]
+    time_taken_df = pd.DataFrame(columns=tune_params['seed'])
+    start = time.time()
     for to_path, train_size in to_path_list.items():
         file_name = to_path.strip(".").strip("/")
-        for index, seed in enumerate(seed_range):
-            model.load_weights("../4Weights/yolov3.weights",
-                               cust_train_zero=True)
-            x_start = time.time()
-            random.seed(seed)
-            if not os.path.exists(to_path):
-                os.makedirs(to_path)
-            sub_name = f"{file_name}_seed_{seed}_"
-            name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
-            # Original label names
-            label_csv_mame = '../color_balls/label.csv'
-            img_txt_path = "../color_balls/*.txt"
-            prep_labels(img_txt_path, name_list, label_csv_mame)
-            # sub sampled label names
-            sub_sample_csv_name = to_path + "label.csv"
-            sub_sample_txt_path = to_path + "*.txt"
-            # label_csv_mame = '../1TestData/label.csv'
-            # img_txt_path = "../1TestData/*.txt"
-            move_images(label_name=label_csv_mame, to_path=to_path,
+        for experiment_params in experiments_params:
+            params = prep_params(config['params_dir'],
+                                 config['label_csv_mame'],
+                                 experiment_params)
+            move_images(label_name=config['label_csv_mame'], to_path=to_path,
                         action_fn=split_train, train_size=train_size,
-                        random_state=seed)
+                        random_state=params['seed'])
+            params['sub_name'] = f"{file_name}_seed_{params['seed']}_"
+            x_start = time.time()
             best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
-                map_frame = main(model,
-                                 classes, conf_list,
-                                 sub_sample_csv_name,
-                                 sub_sample_txt_path,
-                                 to_path,
-                                 cuda=True,
-                                 specific_conf=0.5,
-                                 sub_name=sub_name)
-
-            map_frame.to_csv(f"{compare_path+sub_name}.csv",
+                map_frame = run_training(params=params, **config)
+            map_frame.to_csv(f"{compare_path+params['sub_name']}.csv",
                              index=True)
-            shutil.rmtree(to_path)
-            time_taken_df.loc[file_name, seed] = time.time() - x_start
-            # if you change the csv_name, pls change accordingly in the 
-            # visualization part
+            time_taken_df.loc[params[file_name],
+                              params['seed']] = time.time() - x_start
             time_taken_df.to_csv(compare_path + 'time_taken.csv', index=True)
-
-
-if __name__ == '__main__':
-    seed = 1
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    logging.basicConfig(level=logging.DEBUG,
-                        format="[%(asctime)s %(filename)s] %(message)s")
-    start = time.time()
-    compare()
-    time_taken = time.time()-start
-    print(f"This experiment took {time_taken//(60*60)} hours : \
-                                  {time_taken%60} minutes : \
-                                  {time_taken%60} seconds!")
-
-
-#with open(compare_path + config_name, 'rb') as fp:
-#    b = pickle.load(fp)
+        time_taken = time.time()-start
+        print(f"This experiment took {time_taken//(60*60)} hours : \
+                                      {time_taken%60} minutes : \
+                                      {time_taken%60} seconds!")

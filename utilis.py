@@ -151,8 +151,9 @@ def shortcut_layer_handling(module, index, layer, layer_type_dic):
 
 
 def yolo_layer_handling(params, module, index, layer, layer_type_dic):
-    anchor_index = [int(x) for x in (layer["mask"].split(","))]
-    anchors = params['anchors'][anchor_index]
+    a = len(layer_type_dic['yolo']) * params['num_anchors']
+    layer["mask"] = range(a, a + params['num_anchors'])
+    anchors = params['anchors'][layer["mask"]]
     yolo = yolo_layer(anchors)
     module.add_module("yolo_{}".format(index), yolo)
     layer_type_dic['yolo'].append(index)
@@ -422,6 +423,55 @@ def letterbox_image(img, inp_dim):
     return canvas
 
 
+class LetterboxImage_cv():
+    def __init__(self, inp_dim):
+        self.w, self.h = inp_dim
+
+    def __call__(self, img):
+        img_w, img_h = img.shape[1], img.shape[0]
+        new_w = int(img_w * min(self.w/img_w, self.h/img_h))
+        new_h = int(img_h * min(self.w/img_w, self.h/img_h))
+        resized_image = cv2.resize(img, (new_w, new_h),
+                                   interpolation=cv2.INTER_CUBIC)
+        canvas = np.full((self.h, self.w, 3), 128)
+        canvas[(self.h-new_h)//2:(self.h-new_h)//2 + new_h,
+               (self.w-new_w)//2:(self.w-new_w)//2 + new_w, :] = resized_image
+        return canvas
+
+
+class LetterboxImage():
+    def __init__(self, inp_dim):
+        self.w, self.h = inp_dim
+
+    def __call__(self, img):
+        img = np.array(img)
+        img_w, img_h = img.shape[1], img.shape[0]
+        new_w = int(img_w * min(self.w/img_w, self.h/img_h))
+        new_h = int(img_h * min(self.w/img_w, self.h/img_h))
+        resized_image = cv2.resize(img, (new_w, new_h),
+                                   interpolation=cv2.INTER_CUBIC)
+        canvas = np.full((self.h, self.w, 3), 128)
+        canvas[(self.h-new_h)//2:(self.h-new_h)//2 + new_h,
+               (self.w-new_w)//2:(self.w-new_w)//2 + new_w, :] = resized_image
+        return canvas
+
+
+class ImgToTensorCv():
+    def __call__(self, img):
+        # change from h w c to c h w for pytorch imput
+        img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
+        img = torch.FloatTensor(img)
+        return img
+
+
+class ImgToTensor():
+    def __call__(self, img):
+        # change from h w c to c h w for pytorch imput
+        img = img[:, :, ::-1].transpose((2, 1, 0)).copy()
+        img = torch.FloatTensor(img)
+        return img
+
+
 def prep_image(img, inp_dim):
     img = (letterbox_image(img, (inp_dim, inp_dim)))
     img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
@@ -528,6 +578,17 @@ def move_images(label_name, to_path, action_fn, action="copy", **kwargs):
             shutil.copy(images[:-3] + 'txt', to_path)
 
 
+def move_images_cv(dfs, to_paths, name_list):
+    for df, to_path in zip(dfs, to_paths):
+        if not os.path.exists(to_path):
+                os.makedirs(to_path)
+        for images in df.iloc[:, 0]:
+            shutil.copy(images, to_path)
+            shutil.copy(images[:-3] + 'txt', to_path)
+        prep_labels(f"{to_path}*.txt", name_list,
+                    f"{to_path}label.csv")
+
+
 def resize_all_img(new_w, new_h, from_path, to_path):
     '''
     This function resize images into new sizes and make a copy of them to a
@@ -572,7 +633,8 @@ def prep_params(params_dir, label_csv_mame, experiment_params=False):
         params = json.load(fp)
     if experiment_params:
         params = {**params, **experiment_params}
-    if type(params['anchors']) == 'list':
+    params['width'] = params['height']
+    if type(params['anchors']) == list:
         params['anchors'] = np.array(params['anchors'])
     else:
         params['anchors'] = generate_anchor(label_csv_mame,

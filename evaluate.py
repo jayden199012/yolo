@@ -49,6 +49,12 @@ def bbox_iou_numpy(box1, box2):
 
 
 def eval_score(model, dataloader):
+    '''
+    This function is to get average test set losss
+    Argument:
+        model
+        dataLoaderL data lodaer objects
+    '''
     model.eval()
     with torch.no_grad():
         for step, samples in enumerate(dataloader):
@@ -145,9 +151,11 @@ def compute_map(all_detections, all_annotations, conf_index,
         return mAP, list(average_precisions.values())
 
 
-def get_map(model, dataloader, train=False, loop_conf=False):
+def get_map(model, dataloader, train=False, loop_conf=False, confidence=False):
     actual_num_labels = 0
-    if loop_conf:
+    if confidence:
+        loop_conf = confidence
+    elif loop_conf:
         loop_conf = model.params['conf_list']
     else:
         loop_conf = [model.params['specific_conf']]
@@ -227,7 +235,7 @@ def get_map(model, dataloader, train=False, loop_conf=False):
             print(f"Running for object confidence : {confidence}")
             # if train it results consists mAP, average_precisions map_frame
             # else: mAP, average_precisions
-            print(actual_num_labels)
+            print(f"actual_num_labels : {actual_num_labels}")
             results = compute_map(all_detections, all_annotations, conf_index,
                                   map_frame, train, actual_num_labels,
                                   model.params)
@@ -297,3 +305,4 @@ if __name__ == "__main__":
     print(f"specific conf mAP is : {specific_conf_map}")
     print(f"specific conf AP is : {specific_conf_ap}")
     print(f"Best conf is : {best_conf}")
+

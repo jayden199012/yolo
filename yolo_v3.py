@@ -24,7 +24,6 @@ class yolo_v3(nn.Module):
                                              5) * self.params['num_anchors']
         self.layer_type_dic, self.module_list = create_module(
                                                     self.params, blocks)
-        print(self.module_list)
         self.mse_loss = nn.MSELoss()
         self.bce_loss = nn.BCELoss()
         self.losses_name = ["total_loss", "x", "y", "w", "h", "conf", "cls"]
@@ -36,7 +35,8 @@ class yolo_v3(nn.Module):
         if self.params['cuda']:
             self = self.cuda()
 
-    def fit(self, train_loader, test_loader, loop_conf=False):
+    def fit(self, train_loader, test_loader, vaild_loader=False,
+            loop_conf=False):
         # inituate a dictionry to store all the logs for tensorboard
         ts_writer = {}
 
@@ -149,37 +149,55 @@ class yolo_v3(nn.Module):
                             continue
 
                     evaluate_running_loss = eval_score(self, test_loader)
+                    logging.info(f"evaluate_running_loss:\
+                                 {evaluate_running_loss[0]}")
                     for i, name in enumerate(self.losses_name):
                         ts_writer["tensorboard_writer"].add_scalar(
                                 "evel_" + name, evaluate_running_loss[i],
                                 self.params["global_step"])
+                    if vaild_loader:
+                        self.params['test_best_map'] = get_map(
+                                self, vaild_loader,
+                                confidence=[self.params['confidence']])[0]
+                        ts_writer["tensorboard_writer"].add_scalar(
+                                    "test_best_map",
+                                    self.params['test_best_map'],
+                                    self.params["global_step"])
                     self.train(True)
                     eva = 0
                 if save and (epoch+1) % self.params['save_epoch'] == 0:
                     _save_checkpoint(self)
                     save = 0
             lr_scheduler.step()
-
-        best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
-            map_frame = get_map(self, test_loader, train=False, loop_conf=True)
-        self.params['best_map'] = best_map
-        self.params['confidence'] = best_conf
+        print(f"at least it reached before get_map")
+#        best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
+#            map_frame = get_map(self, test_loader, train=False, loop_conf=True)
+        map_results = get_map(self, test_loader, train=False, loop_conf=True)
+        self.params['best_map'] = map_results[0]
+        self.params['confidence'] = map_results[2]
+        print(f"at least it reached here")
+        if vaild_loader:
+            self.params['test_best_map'] = get_map(
+                    self, vaild_loader,
+                    confidence=[self.params['confidence']])[0]
+            ts_writer["tensorboard_writer"].add_scalar(
+                        "test_best_map", self.params['test_best_map'],
+                        self.params["global_step"])
         _save_checkpoint(self)
         for index, mr_name in enumerate(map_results_names):
             try:
                 ts_writer["tensorboard_writer"].add_scalar(
                         mr_name, map_results[index],
                         self.params["global_step"])
-            except AttributeError:
+            except (AttributeError):
                 continue
         # model.train(True)
         logging.info("Bye~")
         if self.params['return_csv']:
-            map_frame.to_csv(
+            map_results[5].to_csv(
                     f"{self.params['sub_working_dir']}/final_performance.csv",
                     index=True)
-        return best_map, best_ap, best_conf, specific_conf_map,\
-            specific_conf_ap, map_frame
+        return tuple(map_results)
 
     def predict(self, x, layer, batch_size):
         anchors = layer[0].anchors
@@ -351,6 +369,7 @@ class yolo_v3(nn.Module):
 
         for b in range(batch_size):
             for label in range(labels[b].shape[0]):
+                # if labels are all zero then ignore
                 if (labels[b][label] == 0).all():
                     continue
                 gx = labels[b][label, 1] * yolo_size
@@ -370,7 +389,6 @@ class yolo_v3(nn.Module):
 
                 # transform anchor box to torch tensor
                 # returns a num_anchors * 4 tensor
-                print(f"this is scaled_anchors {scaled_anchors}")
                 anchor_box = torch.cat((torch.zeros(self.params['num_anchors'],
                                                     2),
                                         torch.FloatTensor(
@@ -589,3 +607,4 @@ class yolo_v3(nn.Module):
 
                     conv_weights = conv_weights.view_as(conv.weight.data)
                     conv.weight.data.copy_(conv_weights)
+

@@ -5,8 +5,9 @@ import numpy as np
 import glob
 import pandas as pd
 
+
 def keep_important_weights_only(rootdir, csv_rootdir, tfevent_rootdir):
-    ''' 
+    '''
     Results from csv gives the latest results while results from tfevents
     gave us best results, if if the file is either one of them, it will be kept
     otherwise deleted.

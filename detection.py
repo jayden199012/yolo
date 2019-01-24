@@ -47,7 +47,7 @@ def detection(cfg_path, det, label_csv_mame, root_dir, params):
         prediction = model(images)
         print(prediction.shape)
         model.params['num_classes']
-        output = filter_results(prediction)
+        output = filter_results(prediction, params)
         if type(output) != int:
             im_dim_list = torch.index_select(
                     im_dim_list, 0, output[:, 0].long())
