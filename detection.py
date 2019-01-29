@@ -45,7 +45,6 @@ def detection(cfg_path, det, label_csv_mame, root_dir, params):
             images = images.cuda()
             im_dim_list = im_dim_list.cuda()
         prediction = model(images)
-        print(prediction.shape)
         model.params['num_classes']
         output = filter_results(prediction, params)
         if type(output) != int:

@@ -406,7 +406,7 @@ def compute_ap(recall, precision):
     return ap
 
 
-def letterbox_image(img, inp_dim):
+def letterbox_image(img, inp_dim, inp_channel=3):
     '''resize image with unchanged aspect ratio using padding'''
     img_w, img_h = img.shape[1], img.shape[0]
     w, h = inp_dim
@@ -415,7 +415,7 @@ def letterbox_image(img, inp_dim):
     resized_image = cv2.resize(img, (new_w, new_h),
                                interpolation=cv2.INTER_CUBIC)
 
-    canvas = np.full((inp_dim[1], inp_dim[0], 3), 128)
+    canvas = np.full((inp_dim[1], inp_dim[0], inp_channel), 128)
 
     canvas[(h-new_h)//2:(h-new_h)//2 + new_h,
            (w-new_w)//2:(w-new_w)//2 + new_w, :] = resized_image
@@ -424,8 +424,9 @@ def letterbox_image(img, inp_dim):
 
 
 class LetterboxImage_cv():
-    def __init__(self, inp_dim):
+    def __init__(self, inp_dim, inp_channel=3):
         self.w, self.h = inp_dim
+        self.inp_channel = inp_channel
 
     def __call__(self, img):
         img_w, img_h = img.shape[1], img.shape[0]
@@ -433,9 +434,12 @@ class LetterboxImage_cv():
         new_h = int(img_h * min(self.w/img_w, self.h/img_h))
         resized_image = cv2.resize(img, (new_w, new_h),
                                    interpolation=cv2.INTER_CUBIC)
-        canvas = np.full((self.h, self.w, 3), 128)
+        canvas = np.full((self.h, self.w, self.inp_channel), 128)
         canvas[(self.h-new_h)//2:(self.h-new_h)//2 + new_h,
                (self.w-new_w)//2:(self.w-new_w)//2 + new_w, :] = resized_image
+
+        # normalize image
+        canvas = (canvas - canvas.min())/(canvas.max()-canvas.min())
         return canvas
 
 
@@ -466,7 +470,7 @@ class ImgToTensorCv():
 
 class ImgToTensor():
     def __call__(self, img):
-        # change from h w c to c h w for pytorch imput
+        # change from w h c to c h w for pytorch imput
         img = img[:, :, ::-1].transpose((2, 1, 0)).copy()
         img = torch.FloatTensor(img)
         return img
@@ -517,8 +521,9 @@ def my_collate_detection(batch):
 
 
 def draw_boxes(image, boxes):
-    fig, ax = plt.subplots(1, figsize=(7, 7))
-    boxes = boxes * image.shape[0]
+    fig, ax = plt.subplots(1, figsize=(12, 12))
+    boxes[:, [1, 3]] = boxes[:, [1, 3]] * image.shape[1]
+    boxes[:, [2, 4]] = boxes[:, [2, 4]] * image.shape[0]
     colors = {i: np.random.rand(3,) for i in range(len(boxes))}
     for i, box in enumerate(boxes):
         x, y, w, h = (box[1] - box[3]/2), (box[2] - box[4]/2), box[3], box[4]
@@ -645,3 +650,45 @@ def prep_params(params_dir, label_csv_mame, experiment_params=False):
     params['classes'] = load_classes('../4Others/color_ball.names')
     params['conf_list'] = list(np.arange(start=0.2, stop=0.95, step=0.025))
     return params
+
+
+
+
+
+def prep_txt(txt_dir, img_dir, labels_csv, label_name):
+    labels = pd.read_csv(labels_csv)
+    labels = labels.iloc[:, ]
+    imgs = glob.glob(f"{img_dir}*jpg")
+    imgs_s = pd.Series(imgs)
+    imgs_s = imgs_s.apply(lambda x: x.split('\\')[1].replace('.jpg', ''))
+    labels = labels.iloc[((labels.ImageID.isin(imgs_s)) &
+                          (labels.LabelName == label_name)).values,
+                         [0, 2, 4, 5, 6, 7]]
+    labels.LabelName = 0
+    w = abs(labels.XMax - labels.XMin)
+    h = abs(labels.YMax - labels.YMin)
+    x = labels.XMin + w/2
+    y = labels.YMin + h/2
+    labels = pd.concat([labels, x.rename('x'), y.rename('y'), w.rename('w'),
+                        h.rename('h')], axis=1)
+    labels = labels.drop(columns=['XMin', 'XMax', 'YMin', 'YMax'], axis=1)
+    for img in imgs_s:
+        labels.loc[labels.ImageID == img, labels.columns != 'ImageID'].to_csv(
+                f'{img_dir}{img}.txt', header=None, index=None, sep=' ',
+                mode='w')
+
+
+#labels_csv = '../4Others/OIDv4_ToolKit/OID/csv_folder/train-annotations-bbox.csv'
+#img_dir = '../train/eye/'
+#label_name = '/m/014sv8'
+#image = np.array(Image.open('../train/eye/000cf4b56061f60f.jpg'))
+#boxes = pd.read_csv('../train/eye/000cf4b56061f60f.txt', sep=" ", header=None).values
+#draw_boxes(image, boxes)
+#        
+#x = cv2.imread('../1TrainData/4aeeac7ac9fed526.jpg')
+#x = Image.open('../1TrainData/4aeeac7ac9fed526.jpg')
+#x = np.array(Image.open('../1TrainData/4aeeac7ac9fed526.jpg'))
+#len(x.shape)
+#
+#x = color.gray2rgb(x)
+#Image.Image.convert("RGB", x)

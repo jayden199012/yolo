@@ -4,6 +4,7 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 from utilis import letterbox_image
+from skimage import color
 import cv2
 
 
@@ -39,6 +40,7 @@ class CustData(Dataset):
 
     def __getitem__(self, idx):
         img_name = self.list_IDs[idx]
+        print(f"img_name : {img_name}")
         image = Image.open(img_name)
         if self.detection_phase:
             ori_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
@@ -49,6 +51,7 @@ class CustData(Dataset):
             image, labels = self.pre_trans(image, labels)
         if self.transform:
             image = self.transform(image)
+
         if self.post_trans:
             image, labels = self.post_trans(image, labels)
         if self.detection_phase:
@@ -75,7 +78,7 @@ class CustDataCV(Dataset):
 
     def __getitem__(self, idx):
         img_name = self.list_IDs[idx]
-        image = cv2.imread(img_name)
+        image = cv2.imread(img_name, 1)
         labels = self.label_frame.iloc[:, 1:][self.label_frame.iloc[
                 :, 0] == img_name].astype('float').values.reshape(-1, 5)
         if self.transform:
@@ -94,6 +97,8 @@ class RandomCrop:
         # read imgage using PIL formate (w, h, c)
         w, h = image.size[:2]
         pix = np.array(image)
+        if len(pix.shape) == 2:
+            pix = color.gray2rgb(pix)
         # random x min max, y min max thus new width and height
         new_xmin = np.random.uniform(high=self.jitter)
         new_xmax = 1-np.random.uniform(high=(self.jitter-new_xmin))

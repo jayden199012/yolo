@@ -10,6 +10,8 @@ from tensorboardX import SummaryWriter
 from torch import optim
 import numpy as np
 import os
+import math
+import sys
 
 
 class yolo_v3(nn.Module):
@@ -109,6 +111,7 @@ class yolo_v3(nn.Module):
                 losses = self(images, is_training=True, labels=labels)
                 loss = losses[0]
                 loss.backward()
+                print(f"after back: {loss}")
                 optimizer.step()
 
                 if step > 0 and step % self.params['loss_step'] == 0:
@@ -169,13 +172,11 @@ class yolo_v3(nn.Module):
                     _save_checkpoint(self)
                     save = 0
             lr_scheduler.step()
-        print(f"at least it reached before get_map")
 #        best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
 #            map_frame = get_map(self, test_loader, train=False, loop_conf=True)
         map_results = get_map(self, test_loader, train=False, loop_conf=True)
         self.params['best_map'] = map_results[0]
         self.params['confidence'] = map_results[2]
-        print(f"at least it reached here")
         if vaild_loader:
             self.params['test_best_map'] = get_map(
                     self, vaild_loader,
@@ -306,12 +307,15 @@ class yolo_v3(nn.Module):
         # cordinates loss
         loss_x = self.mse_loss(tx_pred * mask, tx * mask)
         loss_y = self.mse_loss(ty_pred * mask, ty * mask)
+        print(f"loss_x {loss_x}")
+        print(f"loss_y {loss_y}")
 
-        loss_w = self.mse_loss(((torch.abs(tw_pred) + 1e-16) ** (1/2)) * mask,
-                               ((tw + 1e-16) ** (1/2)) * mask)
-        loss_h = self.mse_loss(((torch.abs(th_pred) + 1e-16) ** (1/2)) * mask,
-                               ((th + 1e-16) ** (1/2)) * mask)
-
+        loss_w = self.mse_loss(((torch.abs(tw_pred) + 1e-8) ** (1/2)) * mask,
+                               ((tw + 1e-8) ** (1/2)) * mask)
+        loss_h = self.mse_loss(((torch.abs(th_pred) + 1e-8) ** (1/2)) * mask,
+                               ((th + 1e-8) ** (1/2)) * mask)
+        print(f"loss_w {loss_w}")
+        print(f"loss_h {loss_h}")
 #        loss_w = self.mse_loss(tw_pred  * mask, tw  * mask)
 #        loss_h = self.mse_loss(th_pred * mask, th * mask)
 
@@ -320,16 +324,18 @@ class yolo_v3(nn.Module):
         loss_conf = self.bce_loss(con_pred * mask, mask) + \
             self.params['lambda_noobj'] * self.bce_loss(con_pred * noobj_mask,
                                                         noobj_mask * 0.0)
-
+        print(f"loss_conf {loss_conf}")
         # class loss
         loss_cls = self.bce_loss(cls_pred[mask == 1], tcls[mask == 1])
-
+        print(f"loss_cls {loss_cls}")
         # final loss
         loss = self.params['lambda_coord'] *\
             (loss_x + loss_y + loss_w + loss_h) + \
             self.params['conf_lambda'] * loss_conf +\
             self.params['cls_lambda'] * loss_cls
-
+        print(f"loss {loss}")
+        if torch.isnan(loss):
+            sys.exit()
         return loss, loss_x.item(), loss_y.item(), loss_w.item(), \
             loss_h.item(), loss_conf.item(), loss_cls.item()
 

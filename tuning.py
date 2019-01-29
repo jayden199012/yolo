@@ -1,19 +1,22 @@
 from __future__ import division
 
 import torch
-from utilis import prep_params
+from utilis import prep_params, prep_labels
 from train import run_training
 import itertools as it
 
 if __name__ == "__main__":
     config = {'label_csv_mame': '../1TrainData/label.csv',
-              'img_txt_path': "../1TrainData/*.txt",
               # label csv column names
               'name_list': ["img_name", "c", "gx", "gy", "gw", "gh"],
               'test_label_csv_mame': '../1TestData/label.csv',
               'test_img_txt_path': "../1TestData/*.txt",
               'cfg_path': "../4Others/yolo.cfg",
               'params_dir': '../4Others/params.txt'}
+
+    prep_label_config = {'label_csv_mame': config['label_csv_mame'],
+                         'img_txt_path': "../1TrainData/*.txt",
+                         'name_list': config['name_list']}
 
     torch.backends.cudnn.enabled = False
     torch.backends.cudnn.benchmark = False
@@ -26,6 +29,9 @@ if __name__ == "__main__":
                    }
     index, values = zip(*tune_params.items())
     experiments_params = [dict(zip(index, v)) for v in it.product(*values)]
+
+    # prepare training lables
+    prep_labels(**prep_label_config)
     for experiment_params in experiments_params:
         params = prep_params(config['params_dir'],
                              config['label_csv_mame'],

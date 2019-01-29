@@ -10,7 +10,6 @@ import shutil
 
 def cross_validation():
     config = {'label_csv_mame': '../2CvTrain/label.csv',
-              'img_txt_path': "../2CvTrain/*.txt",
               'test_label_csv_mame': '../1TestData/label.csv',
               'test_img_txt_path': "../1TestData/*.txt",
               'valid_label_csv_mame': '../2CvValid/label.csv',
@@ -19,10 +18,14 @@ def cross_validation():
               'name_list': ["img_name", "c", "gx", "gy", "gw", "gh"],
               'cfg_path': "../4Others/yolo.cfg",
               'params_dir': '../4Others/params.txt'}
-
+    # entire trainin label
     prep_label_config = {'label_csv_mame': '../1TrainData/label.csv',
                          'img_txt_path': "../1TrainData/*.txt",
                          'name_list': config['name_list']}
+    # cv train label
+    cv_train_label_config = {'label_csv_mame': config['label_csv_mame'],
+                             'img_txt_path': "../2CvTrain/*.txt",
+                             'name_list': config['name_list']}
 
     torch.backends.cudnn.enabled = False
     torch.backends.cudnn.benchmark = False
@@ -41,7 +44,7 @@ def cross_validation():
     for experiment_params in experiments_params:
         cv_split_config = {'n_splits': 5,
                            'cv': True,
-                           'train_size': 0.5,
+                           'train_size': 0.7,
                            'name_list': config['name_list'],
                            'random_state': experiment_params['seed'],
                            'train_cv_path': "../2CvTrain/",
@@ -49,8 +52,9 @@ def cross_validation():
                            'label_name': prep_label_config['label_csv_mame']}
 
         for _ in split_train(**cv_split_config):
+            prep_labels(**cv_train_label_config)
             params = prep_params(config['params_dir'],
-                                 config['label_csv_mame'],
+                                 cv_train_label_config['label_csv_mame'],
                                  experiment_params)
             best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap,\
                 map_frame = run_training(params=params, **config)

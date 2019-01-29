@@ -182,7 +182,7 @@ def get_map(model, dataloader, train=False, loop_conf=False, confidence=False):
 
             img_size = image.shape[-1]
             outputs = model(image)
-
+            print(outputs)
             for conf_index, confidence in enumerate(loop_conf):
                 # gets output at each object confidence
                 model.params['confidence'] = confidence
