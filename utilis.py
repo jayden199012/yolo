@@ -30,6 +30,91 @@ class yolo_layer(nn.Module):
         self.anchors = anchors
 
 
+class OfssetLabels():
+    '''
+        offset labels and have the options to resize images
+    '''
+
+    def __init__(self, resize=True, input_dim=416):
+        self.resize = resize
+        self.input_dim = input_dim
+
+    def __call__(self, image, labels):
+        '''
+            image in np arrary format
+            labels are in np array format
+        '''
+        # transform xcentre, y centre, width and height to xy (min max)
+        label_xmin = labels[:, 1] - labels[:, 3]/2
+        label_ymin = labels[:, 2] - labels[:, 4]/2
+        longer_side = np.max(image.shape[:2])
+        shorter_side = np.min(image.shape[:2])
+        ratio = shorter_side / longer_side
+        offset = ((longer_side - shorter_side) / longer_side) / 2
+
+        # adjust the shorter side for resizing
+        if np.argmax(image.shape[:2]):
+            labels[:, 4] = labels[:, 4] * ratio
+            labels[:, 2] = label_ymin*ratio + offset + labels[:, 4]/2
+
+        else:
+            labels[:, 3] = labels[:, 3] * ratio
+            labels[:, 1] = label_xmin*ratio + offset + labels[:, 3]/2
+        if self.resize:
+            ltb = LetterBoxImage_cv((self.input_dim, self.input_dim))
+            image = ltb(image)
+        return image, labels
+
+
+class LetterBoxImage_cv():
+    def __init__(self, inp_dim, inp_channel=3):
+        self.w, self.h = inp_dim
+        self.inp_channel = inp_channel
+
+    def __call__(self, img):
+        img_w, img_h = img.shape[1], img.shape[0]
+        new_w = int(img_w * min(self.w/img_w, self.h/img_h))
+        new_h = int(img_h * min(self.w/img_w, self.h/img_h))
+        resized_image = cv2.resize(img, (new_w, new_h),
+                                   interpolation=cv2.INTER_CUBIC)
+        canvas = np.full((self.h, self.w, self.inp_channel), 128)
+        canvas[(self.h-new_h)//2:(self.h-new_h)//2 + new_h,
+               (self.w-new_w)//2:(self.w-new_w)//2 + new_w, :] = resized_image
+
+        # normalize image
+        canvas = (canvas - canvas.min())/(canvas.max()-canvas.min())
+        return canvas
+
+
+class LetterboxImage():
+    def __init__(self, inp_dim, inp_channel=3):
+        self.w, self.h = inp_dim
+        self.inp_channel = inp_channel
+
+    def __call__(self, img):
+        img = np.array(img)
+        img_w, img_h = img.shape[1], img.shape[0]
+        new_w = int(img_w * min(self.w/img_w, self.h/img_h))
+        new_h = int(img_h * min(self.w/img_w, self.h/img_h))
+        resized_image = cv2.resize(img, (new_w, new_h),
+                                   interpolation=cv2.INTER_CUBIC)
+        canvas = np.full((self.h, self.w, self.inp_channel), 128)
+        canvas[(self.h-new_h)//2:(self.h-new_h)//2 + new_h,
+               (self.w-new_w)//2:(self.w-new_w)//2 + new_w, :] = resized_image
+        return canvas
+
+
+class ImgToTensorCv():
+    def __call__(self, img):
+        '''
+            image in np arrays format
+        '''
+        # change from h w c to c h w for pytorch imput
+        img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
+        img = torch.FloatTensor(img)
+        return img
+
+
 def load_classes(namesfile):
     with open(namesfile, "r") as file:
         names = file.read().split("\n")[:-1]
@@ -423,57 +508,6 @@ def letterbox_image(img, inp_dim, inp_channel=3):
     return canvas
 
 
-class LetterboxImage_cv():
-    def __init__(self, inp_dim, inp_channel=3):
-        self.w, self.h = inp_dim
-        self.inp_channel = inp_channel
-
-    def __call__(self, img):
-        img_w, img_h = img.shape[1], img.shape[0]
-        new_w = int(img_w * min(self.w/img_w, self.h/img_h))
-        new_h = int(img_h * min(self.w/img_w, self.h/img_h))
-        resized_image = cv2.resize(img, (new_w, new_h),
-                                   interpolation=cv2.INTER_CUBIC)
-        canvas = np.full((self.h, self.w, self.inp_channel), 128)
-        canvas[(self.h-new_h)//2:(self.h-new_h)//2 + new_h,
-               (self.w-new_w)//2:(self.w-new_w)//2 + new_w, :] = resized_image
-
-        # normalize image
-        canvas = (canvas - canvas.min())/(canvas.max()-canvas.min())
-        return canvas
-
-
-class LetterboxImage():
-    def __init__(self, inp_dim):
-        self.w, self.h = inp_dim
-
-    def __call__(self, img):
-        img = np.array(img)
-        img_w, img_h = img.shape[1], img.shape[0]
-        new_w = int(img_w * min(self.w/img_w, self.h/img_h))
-        new_h = int(img_h * min(self.w/img_w, self.h/img_h))
-        resized_image = cv2.resize(img, (new_w, new_h),
-                                   interpolation=cv2.INTER_CUBIC)
-        canvas = np.full((self.h, self.w, 3), 128)
-        canvas[(self.h-new_h)//2:(self.h-new_h)//2 + new_h,
-               (self.w-new_w)//2:(self.w-new_w)//2 + new_w, :] = resized_image
-        return canvas
-
-
-class ImgToTensorCv():
-    def __call__(self, img):
-        # change from h w c to c h w for pytorch imput
-        img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
-        img = torch.FloatTensor(img)
-        return img
-
-
-class ImgToTensor():
-    def __call__(self, img):
-        # change from w h c to c h w for pytorch imput
-        img = img[:, :, ::-1].transpose((2, 1, 0)).copy()
-        img = torch.FloatTensor(img)
-        return img
 
 
 def prep_image(img, inp_dim):
@@ -521,11 +555,16 @@ def my_collate_detection(batch):
 
 
 def draw_boxes(image, boxes):
-    fig, ax = plt.subplots(1, figsize=(12, 12))
-    boxes[:, [1, 3]] = boxes[:, [1, 3]] * image.shape[1]
-    boxes[:, [2, 4]] = boxes[:, [2, 4]] * image.shape[0]
-    colors = {i: np.random.rand(3,) for i in range(len(boxes))}
-    for i, box in enumerate(boxes):
+    '''
+        image should be a PIL array w, h, c format
+        boxes are two dimension list or arrays
+    '''
+    boxes_ = boxes.copy()
+    fig, ax = plt.subplots(1, figsize=(8, 8))
+    boxes_[:, [1, 3]] = boxes_[:, [1, 3]] * image.shape[1]
+    boxes_[:, [2, 4]] = boxes_[:, [2, 4]] * image.shape[0]
+    colors = {i: np.random.rand(3,) for i in range(len(boxes_))}
+    for i, box in enumerate(boxes_):
         x, y, w, h = (box[1] - box[3]/2), (box[2] - box[4]/2), box[3], box[4]
         xmin, ymin, xmax, ymax = x, y, x+w, y+h
         p = Polygon(((xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)),
@@ -647,12 +686,10 @@ def prep_params(params_dir, label_csv_mame, experiment_params=False):
                                             params['height'],
                                             num_clusters=params[
                                                     'num_anchors']*3)
-    params['classes'] = load_classes('../4Others/color_ball.names')
+    params['classes'] = load_classes('../4Others/human_eye.names')
     params['conf_list'] = list(np.arange(start=0.2, stop=0.95, step=0.025))
+    print(params)
     return params
-
-
-
 
 
 def prep_txt(txt_dir, img_dir, labels_csv, label_name):

@@ -182,7 +182,6 @@ def get_map(model, dataloader, train=False, loop_conf=False, confidence=False):
 
             img_size = image.shape[-1]
             outputs = model(image)
-            print(outputs)
             for conf_index, confidence in enumerate(loop_conf):
                 # gets output at each object confidence
                 model.params['confidence'] = confidence
@@ -267,10 +266,10 @@ def get_map(model, dataloader, train=False, loop_conf=False, confidence=False):
 
 def main(param_dir):
     cfg_path = "../4Others/yolo.cfg"
-    test_root_dir = "../1TestData"
-    test_label_csv_mame = '../1TestData/label.csv'
+    test_root_dir = "../2CvTrain"
+    test_label_csv_mame = '../2CvTrain/label.csv'
     blocks = parse_cfg(cfg_path)
-    label_csv_mame = '../1TrainData/label.csv'
+    label_csv_mame = '../2CvTrain/label.csv'
     params = prep_params(param_dir, label_csv_mame)
     from yolo_v3 import yolo_v3
     model = yolo_v3(params, blocks)
@@ -279,7 +278,7 @@ def main(param_dir):
              transforms.Normalize([0.485, 0.456, 0.406],
                                   [0.229, 0.224, 0.225])])
 
-    test_data = CustData(test_label_csv_mame, test_root_dir,
+    test_data = CustData(test_label_csv_mame,
                          transform=test_transform)
 
     test_loader = DataLoader(test_data, shuffle=False,
@@ -296,7 +295,7 @@ def main(param_dir):
 
 if __name__ == "__main__":
     start = time.time()
-    param_dir = "../4TrainingWeights/experiment/trial/2019-01-20_02_05_53.233385/2019-01-20_02_45_53.742302.txt"
+    param_dir = '../4Others/params.txt'
     best_map, best_ap, best_conf, specific_conf_map, specific_conf_ap, \
         map_frame = main(param_dir)
     print(f"time spend: {time.time()-start}")

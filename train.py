@@ -7,7 +7,7 @@ import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from utilis import parse_cfg, prep_labels, my_collate, prep_params,\
- worker_init_fn, LetterboxImage_cv, ImgToTensorCv
+ worker_init_fn, OfssetLabels, ImgToTensorCv
 from yolo_v3 import yolo_v3
 from data import CustData, RandomCrop, CustDataCV
 
@@ -40,16 +40,16 @@ def run_training(params, label_csv_mame, name_list, test_label_csv_mame,
              transforms.Normalize([0.485, 0.456, 0.406],
                                   [0.229, 0.224, 0.225])
              ])
+    test_pre_trans = OfssetLabels(resize=True, input_dim=params['height'])
 
     test_transform = transforms.Compose(
-               [LetterboxImage_cv([params['height'], params['height']]),
-                ImgToTensorCv(),
-                transforms.Normalize([0.485, 0.456, 0.406],
-                                     [0.229, 0.224, 0.225])])
+            [ImgToTensorCv(), transforms.Normalize([0.485, 0.456, 0.406],
+                                                   [0.229, 0.224, 0.225])])
     train_data = CustData(label_csv_mame,
                           pre_trans=pre_trans,
                           transform=train_transform)
     test_data = CustDataCV(test_label_csv_mame,
+                           pre_trans=test_pre_trans,
                            transform=test_transform)
     train_loader = DataLoader(train_data, shuffle=True,
                               batch_size=params["batch_size"],
@@ -94,33 +94,33 @@ if __name__ == "__main__":
     torch.manual_seed(1)
     torch.cuda.manual_seed(1)
     # initiate a dicitonary that contains all directory variable
-#    config = {  # training label location
-#              'label_csv_mame': '../1TrainData/label.csv',
-#              # label csv column names
-#              'name_list': ["img_name", "c", "gx", "gy", "gw", "gh"],
-#              'test_label_csv_mame': '../1TestData/label.csv',
-#              'test_img_txt_path': "../1TestData/*.txt",
-#              # model architect file
-#              'cfg_path': "../4Others/yolo.cfg",
-#              # model parameters file
-#              'params_dir': '../4Others/params.txt'}
     config = {  # training label location
-              'label_csv_mame': '../2CvTrain/label.csv',
+              'label_csv_mame': '../1TrainData/label.csv',
               # label csv column names
               'name_list': ["img_name", "c", "gx", "gy", "gw", "gh"],
-              'test_label_csv_mame': '../2CvValid/label.csv',
-              'test_img_txt_path': "../2CvValid/*.txt",
+              'test_label_csv_mame': '../1TestData/label.csv',
+              'test_img_txt_path': "../1TestData/*.txt",
               # model architect file
               'cfg_path': "../4Others/yolo.cfg",
               # model parameters file
               'params_dir': '../4Others/params.txt'}
+#    config = {  # training label location
+#              'label_csv_mame': '../2CvTrain/label.csv',
+#              # label csv column names
+#              'name_list': ["img_name", "c", "gx", "gy", "gw", "gh"],
+#              'test_label_csv_mame': '../2CvValid/label.csv',
+#              'test_img_txt_path': "../2CvValid/*.txt",
+#              # model architect file
+#              'cfg_path': "../4Others/yolo.cfg",
+#              # model parameters file
+#              'params_dir': '../4Others/params.txt'}
 
-#    prep_label_config = {'label_csv_mame': config['label_csv_mame'],
-#                         'img_txt_path': "../1TrainData/*.txt",
-#                         'name_list': config['name_list']}
     prep_label_config = {'label_csv_mame': config['label_csv_mame'],
-                         'img_txt_path': "../2CvTrain/*.txt",
+                         'img_txt_path': "../1TrainData/*.txt",
                          'name_list': config['name_list']}
+#    prep_label_config = {'label_csv_mame': config['label_csv_mame'],
+#                         'img_txt_path': "../2CvTrain/*.txt",
+#                         'name_list': config['name_list']}
 
     # prepare training lables
     prep_labels(**prep_label_config)

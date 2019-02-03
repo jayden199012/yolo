@@ -3,7 +3,7 @@ import math
 import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
-from utilis import letterbox_image
+from utilis import letterbox_image, draw_boxes
 from skimage import color
 import cv2
 
@@ -40,7 +40,6 @@ class CustData(Dataset):
 
     def __getitem__(self, idx):
         img_name = self.list_IDs[idx]
-        print(f"img_name : {img_name}")
         image = Image.open(img_name)
         if self.detection_phase:
             ori_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
@@ -65,11 +64,12 @@ class CustData(Dataset):
 
 class CustDataCV(Dataset):
 
-    def __init__(self, csv_file, transform=None):
+    def __init__(self, csv_file, pre_trans=None, transform=None):
         """
            Same as CustData but opens image using open cv instead of pillow
         """
         self.label_frame = pd.read_csv(csv_file)
+        self.pre_trans = pre_trans
         self.transform = transform
         self.list_IDs = self.label_frame.iloc[:, 0].unique()
 
@@ -78,9 +78,11 @@ class CustDataCV(Dataset):
 
     def __getitem__(self, idx):
         img_name = self.list_IDs[idx]
-        image = cv2.imread(img_name, 1)
+        image = cv2.imread(img_name)
         labels = self.label_frame.iloc[:, 1:][self.label_frame.iloc[
                 :, 0] == img_name].astype('float').values.reshape(-1, 5)
+        if self.pre_trans:
+            image, labels = self.pre_trans(image, labels)
         if self.transform:
             image = self.transform(image)
         samples = {'image': image, 'label': labels}
@@ -95,68 +97,78 @@ class RandomCrop:
 
     def __call__(self, image, labels):
         # read imgage using PIL formate (w, h, c)
+#        labels = np.array([[0.,        0.350629,  0.20875,   0.034592,  0.015    ],
+#             [0.,        0.4067085, 0.2103125, 0.031447,  0.015625 ],
+#             [0. ,       0.610063,  0.1771875, 0.037736,  0.016875 ],
+#             [0. ,       0.660377 , 0.180625 , 0.02935 ,  0.01375  ],
+#             [0. ,       0.755241,  0.4153125 ,0.028302,  0.015625 ],
+#             [0.  ,      0.806604,  0.41625,   0.028302,  0.01375  ]])
+#        image = Image.open('../1TrainData/00058ec5c3f3274f.jpg')
         w, h = image.size[:2]
+
+        # after np array, img shape become: h, w, c
         pix = np.array(image)
+
+        # transform the image to rgb if the img is greyscale
         if len(pix.shape) == 2:
             pix = color.gray2rgb(pix)
-        # random x min max, y min max thus new width and height
-        new_xmin = np.random.uniform(high=self.jitter)
-        new_xmax = 1-np.random.uniform(high=(self.jitter-new_xmin))
-        new_ymin = np.random.uniform(high=(self.jitter))
-        new_ymax = 1-np.random.uniform(high=(self.jitter-new_ymin))
-        new_w = new_xmax - new_xmin
-        new_h = new_ymax - new_ymin
 
-        # new images size should always fit the longer side of the image
-        size = np.max([new_w, new_h])
+        # random x min max, y min max thus new width and height of the new img
+        new_img_xmin = np.random.uniform(high=self.jitter)
+        new_img_xmax = 1-np.random.uniform(high=(self.jitter-new_img_xmin))
+        new_img_ymin = np.random.uniform(high=(self.jitter))
+        new_img_ymax = 1-np.random.uniform(high=(self.jitter-new_img_ymin))
+        new_img_w = (new_img_xmax - new_img_xmin)
+        new_img_h = (new_img_ymax - new_img_ymin)
 
-        # difference between new width and height
-        off_set = np.abs(new_w-new_h)/size
-
-        # I wrote this try as there was an error happened here before so
-        # in case it happens again
+        # crop the image with the random initialization above
         try:
-            pix = pix[int(new_ymin * w):math.ceil(new_ymax * w),
-                      int(new_xmin * h):math.ceil(new_xmax * h)]
+            pix = pix[int(new_img_ymin * h):math.ceil(new_img_ymax * h),
+                      int(new_img_xmin * w):math.ceil(new_img_xmax * w)]
         except IndexError:
-            print(f"first int : {int(new_ymin * w):math.ceil(new_ymax * w)}")
-            print(f"second int : {int(new_xmin * h):math.ceil(new_xmax * h)}")
+            print(f"rg1: {int(new_img_ymin * h):math.ceil(new_img_ymax * h)}")
+            print(f"rg2: {int(new_img_xmin * w):math.ceil(new_img_xmax * w)}")
             print(f"image name : {image}")
             return
+        # transform xcentre, y centre, width and height to xy (min max)
+        label_xmin = labels[:, 1] - labels[:, 3]/2
+        label_ymin = labels[:, 2] - labels[:, 4]/2
+        label_xmax = labels[:, 1] + labels[:, 3]/2
+        label_ymax = labels[:, 2] + labels[:, 4]/2
 
-        # add canvas to the new image so that it is in original ratio
-        pix = letterbox_image(pix, (self.inp_dim, self.inp_dim))
+        # new label min coord needs to be in btw 0 and 1
+        new_label_x_min = np.clip((label_xmin - new_img_xmin)/new_img_w,
+                                  a_min=0.0, a_max=1)
+        new_label_y_min = np.clip((label_ymin - new_img_ymin)/new_img_h,
+                                  a_min=0.0, a_max=1)
+        new_label_w = (label_xmax - new_img_xmin)/new_img_w - new_label_x_min
+        new_label_h = (label_ymax - new_img_ymin)/new_img_h - new_label_y_min
 
-        # adjust label coordinates to offset the canvas
-        adjust_width = 0 if new_w > new_h else 1
-        if adjust_width:
-            off_set_list = [off_set/2, 0]
+#        draw_boxes(pix, labels)
+        longer_side = np.max(pix.shape[:2])
+        shorter_side = np.min(pix.shape[:2])
+
+        # we used the length ratio to adjust new labels after resizing
+        ratio = shorter_side / longer_side
+        offset = ((longer_side - shorter_side) / longer_side) / 2
+
+        # adjust the shorter side for resizing
+        if np.argmax(pix.shape[:2]):
+            labels[:, 4] = new_label_h * ratio
+            labels[:, 2] = new_label_y_min*ratio + offset + labels[:, 4]/2
+            labels[:, 3] = new_label_w
+            labels[:, 1] = new_label_x_min + new_label_w/2
         else:
-            off_set_list = [0, off_set/2]
+            labels[:, 3] = new_label_w * ratio
+            labels[:, 1] = new_label_x_min*ratio + offset + labels[:, 3]/2
+            labels[:, 4] = new_label_h
+            labels[:, 2] = new_label_y_min + new_label_h/2
 
-        # adjust labels coordinates according to the crop
-        for index, label in enumerate(labels):
+        # make labels that completely cropped out 0
+        labels[np.where((labels[:, 3] < 0) | (labels[:, 4] < 0))] = 0
 
-            label_xmin = label[1] - label[3]/2
-            label_ymin = label[2] - label[4]/2
-            label_xmax = label[1] + label[3]/2
-            label_ymax = label[2] + label[4]/2
-            label_w = np.min([(
-                    label_xmax - np.max([new_xmin, label_xmin])) / size,
-                                0.999])
-            label_h = np.min([(
-                    label_ymax - np.max([new_ymin, label_ymin])
-                    )/size, 0.999])
-            x_min = np.max([(label_xmin-new_xmin)/size, 0.0]) + off_set_list[0]
-            y_min = np.max([(label_ymin-new_ymin)/size, 0.0]) + off_set_list[1]
-            label[1] = x_min + label_w/2
-            label[2] = y_min + label_h/2
-            label[3] = label_w
-            label[4] = label_h
-
-            # zero out labels when the object is completely cropped out
-            if any(x for x in label[3:5] < 0) or any(
-                    x for x in label[1:3] > 1):
-                labels[index] = 0.0
+        # resize image according to its orignial aspect ratio
+        pix = letterbox_image(pix, (self.inp_dim, self.inp_dim))
+#        draw_boxes(pix, labels)
         image = Image.fromarray(pix.astype('uint8'))
         return image, labels

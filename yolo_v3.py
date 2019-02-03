@@ -10,6 +10,8 @@ from tensorboardX import SummaryWriter
 from torch import optim
 import numpy as np
 import os
+import math
+import sys
 
 
 class yolo_v3(nn.Module):
@@ -108,7 +110,10 @@ class yolo_v3(nn.Module):
                 batch_size = images.size(0)
                 losses = self(images, is_training=True, labels=labels)
                 loss = losses[0]
+                if torch.isnan(loss):
+                    continue
                 loss.backward()
+
                 optimizer.step()
 
                 if step > 0 and step % self.params['loss_step'] == 0:
@@ -304,11 +309,12 @@ class yolo_v3(nn.Module):
         # cordinates loss
         loss_x = self.mse_loss(tx_pred * mask, tx * mask)
         loss_y = self.mse_loss(ty_pred * mask, ty * mask)
+ 
 
-        loss_w = self.mse_loss(((torch.abs(tw_pred) + 1e-16) ** (1/2)) * mask,
-                               ((tw + 1e-16) ** (1/2)) * mask)
-        loss_h = self.mse_loss(((torch.abs(th_pred) + 1e-16) ** (1/2)) * mask,
-                               ((th + 1e-16) ** (1/2)) * mask)
+        loss_w = self.mse_loss(((torch.abs(tw_pred) + 1e-8) ** (1/2)) * mask,
+                               ((tw + 1e-8) ** (1/2)) * mask)
+        loss_h = self.mse_loss(((torch.abs(th_pred) + 1e-8) ** (1/2)) * mask,
+                               ((th + 1e-8) ** (1/2)) * mask)
 
 #        loss_w = self.mse_loss(tw_pred  * mask, tw  * mask)
 #        loss_h = self.mse_loss(th_pred * mask, th * mask)
@@ -318,16 +324,20 @@ class yolo_v3(nn.Module):
         loss_conf = self.bce_loss(con_pred * mask, mask) + \
             self.params['lambda_noobj'] * self.bce_loss(con_pred * noobj_mask,
                                                         noobj_mask * 0.0)
-
         # class loss
         loss_cls = self.bce_loss(cls_pred[mask == 1], tcls[mask == 1])
 
         # final loss
+#        loss = self.params['lambda_coord'] *\
+#            (loss_x + loss_y + loss_w + loss_h) + \
+#            self.params['conf_lambda'] * loss_conf +\
+#            self.params['cls_lambda'] * loss_cls
         loss = self.params['lambda_coord'] *\
             (loss_x + loss_y + loss_w + loss_h) + \
-            self.params['conf_lambda'] * loss_conf +\
-            self.params['cls_lambda'] * loss_cls
+            self.params['conf_lambda'] * loss_conf
 
+#        if torch.isnan(loss):
+#            sys.exit()
         return loss, loss_x.item(), loss_y.item(), loss_w.item(), \
             loss_h.item(), loss_conf.item(), loss_cls.item()
 
@@ -454,7 +464,7 @@ class yolo_v3(nn.Module):
                                                      "referred_relationship"
                                                      ][index]
                 x = torch.cat((cache[referred_layer[0]],
-                               cache[referred_layer[1]]), 1)                    
+                               cache[referred_layer[1]]), 1)                
 
             elif index in self.layer_type_dic["shortcut"]:
                 referred_layer = self.layer_type_dic[
@@ -482,7 +492,6 @@ class yolo_v3(nn.Module):
                     else:
                         detections = torch.cat((detections, x), 1)
                         return detections
-                    print(x)                
             if index in self.layer_type_dic["referred"]:
                 cache[index] = x
 

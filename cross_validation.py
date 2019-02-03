@@ -6,6 +6,8 @@ from train import run_training
 import itertools as it
 from img_size_experiment import split_train
 import shutil
+import random
+import numpy as np
 
 
 def cross_validation():
@@ -66,4 +68,8 @@ def cross_validation():
 
 
 if __name__ == '__main__':
+    random.seed(1)
+    np.random.seed(1)
+    torch.manual_seed(1)
+    torch.cuda.manual_seed(1)
     cross_validation()

@@ -107,5 +107,5 @@ if __name__ == '__main__':
               # model architect file
               'cfg_path': "../4Others/yolo.cfg",
               # model parameters file
-              'param_path': '../4TrainingWeights/experiment/trial/2019-01-22_23_25_34.945880\\2019-01-22_23_26_37.004322.txt'}
+              'param_path': '../4TrainingWeights/human_eye/tune/2019-01-31_05_42_01.707325/2019-01-31_06_41_27.293717.txt'}
     run_webcam(**config)
