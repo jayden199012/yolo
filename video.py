@@ -5,7 +5,7 @@ import torch
 import cv2
 from torchvision import transforms
 from utilis import parse_cfg, write
-from utilis import filter_results, LetterboxImage_cv, ImgToTensorCv
+from utilis import filter_results, LetterBoxImage_cv, ImgToTensorCv
 from yolo_v3 import yolo_v3
 import numpy as np
 import json
@@ -24,7 +24,7 @@ def run_webcam(cfg_path, param_path, colors, nms_thesh=False,
     if params['cuda']:
         model = model.cuda()
     transform = transforms.Compose(
-               [LetterboxImage_cv([params['height'], params['height']]),
+               [LetterBoxImage_cv([params['height'], params['height']]),
                 ImgToTensorCv(),
                 transforms.Normalize([0.485, 0.456, 0.406],
                                      [0.229, 0.224, 0.225])])
@@ -107,5 +107,5 @@ if __name__ == '__main__':
               # model architect file
               'cfg_path': "../4Others/yolo.cfg",
               # model parameters file
-              'param_path': '../4TrainingWeights/human_eye/tune/2019-01-31_05_42_01.707325/2019-01-31_06_41_27.293717.txt'}
+              'param_path': '../4TrainingWeights/human_eye/tune/2019-02-03_01_02_32.525378/2019-02-03_02_47_27.382756.txt'}
     run_webcam(**config)

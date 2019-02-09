@@ -64,7 +64,7 @@ class CustData(Dataset):
 
 class CustDataCV(Dataset):
 
-    def __init__(self, csv_file, pre_trans=None, transform=None):
+    def __init__(self, csv_file, pre_trans=None, transform=None, detection_phase=False):
         """
            Same as CustData but opens image using open cv instead of pillow
         """
@@ -72,6 +72,7 @@ class CustDataCV(Dataset):
         self.pre_trans = pre_trans
         self.transform = transform
         self.list_IDs = self.label_frame.iloc[:, 0].unique()
+        self.detection_phase = detection_phase
 
     def __len__(self):
         return len(self.list_IDs)
@@ -79,13 +80,21 @@ class CustDataCV(Dataset):
     def __getitem__(self, idx):
         img_name = self.list_IDs[idx]
         image = cv2.imread(img_name)
+        if self.detection_phase:
+            ori_image = image.copy()
+            h, w = image.shape[:2]
         labels = self.label_frame.iloc[:, 1:][self.label_frame.iloc[
                 :, 0] == img_name].astype('float').values.reshape(-1, 5)
         if self.pre_trans:
             image, labels = self.pre_trans(image, labels)
         if self.transform:
             image = self.transform(image)
-        samples = {'image': image, 'label': labels}
+        if self.detection_phase:
+            samples = {'ori_image': ori_image, 'image': image,
+                       'img_name': img_name.split('\\')[-1], 'dim': (w, h),
+                       'labels': labels}
+        else:
+            samples = {'image': image, 'label': labels}
         return samples
 
 
@@ -104,6 +113,7 @@ class RandomCrop:
 #             [0. ,       0.755241,  0.4153125 ,0.028302,  0.015625 ],
 #             [0.  ,      0.806604,  0.41625,   0.028302,  0.01375  ]])
 #        image = Image.open('../1TrainData/00058ec5c3f3274f.jpg')
+        
         w, h = image.size[:2]
 
         # after np array, img shape become: h, w, c

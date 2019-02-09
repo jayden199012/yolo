@@ -109,7 +109,8 @@ class ImgToTensorCv():
         '''
             image in np arrays format
         '''
-        # change from h w c to c h w for pytorch imput
+        # change from h w c to c h w for pytorch imput, it also changes from
+        # bgr to rgb
         img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
         img = torch.FloatTensor(img)
         return img
@@ -508,8 +509,6 @@ def letterbox_image(img, inp_dim, inp_channel=3):
     return canvas
 
 
-
-
 def prep_image(img, inp_dim):
     img = (letterbox_image(img, (inp_dim, inp_dim)))
     img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
@@ -595,7 +594,6 @@ def write(x, results, classes):
 def detection_write(x, results, classes):
     c1 = tuple(x[1:3].int())
     c2 = tuple(x[3:5].int())
-    img = results
     img = results[int(x[0])]
     cls = int(x[7])
 #    color = random.choice(colors)
