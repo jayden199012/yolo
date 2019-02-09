@@ -4,17 +4,17 @@ import numpy as np
 import pandas as pd
 import torch
 import cv2
-from utilis import parse_cfg, my_collate_detection,\
- filter_results, worker_init_fn, detection_write
+from utilis import parse_cfg, my_collate_detection, ImgToTensorCv,\
+ filter_results, worker_init_fn, detection_write, LetterBoxImage_cv,\
+ prep_labels, prep_params
 from yolo_v3 import yolo_v3
-from data import CustData
+from data import CustDataCV
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from evaluate import compute_map
-import json
 
 
-def detection(cfg_path, det, label_csv_mame, root_dir, params):
+def detection(cfg_path, det, label_csv_mame, params):
     assert params["height"] % 32 == 0
     assert params["height"] > 32
     blocks = parse_cfg(cfg_path)
@@ -30,11 +30,12 @@ def detection(cfg_path, det, label_csv_mame, root_dir, params):
     # put to evaluation mode so that gradient wont be calculated
     model.eval()
     transform = transforms.Compose(
-        [transforms.Resize(model.params["height"]), transforms.ToTensor(),
-         transforms.Normalize([0.485, 0.456, 0.406],
-                              [0.229, 0.224, 0.225])])
-    data = CustData(label_csv_mame, root_dir, transform=transform,
-                    detection_phase=True)
+            [LetterBoxImage_cv([params['height'], params['height']]),
+             ImgToTensorCv(), transforms.Normalize([0.485, 0.456, 0.406],
+                                                   [0.229, 0.224, 0.225])])
+
+    data = CustDataCV(label_csv_mame, transform=transform,
+                      detection_phase=True)
     data_loader = DataLoader(data, shuffle=False,
                              batch_size=model.params['batch_size'],
                              collate_fn=my_collate_detection,
@@ -45,9 +46,8 @@ def detection(cfg_path, det, label_csv_mame, root_dir, params):
             images = images.cuda()
             im_dim_list = im_dim_list.cuda()
         prediction = model(images)
-        print(prediction.shape)
         model.params['num_classes']
-        output = filter_results(prediction)
+        output = filter_results(prediction, params)
         if type(output) != int:
             im_dim_list = torch.index_select(
                     im_dim_list, 0, output[:, 0].long())
@@ -129,11 +129,12 @@ def simgle_img_map(model, output, labels):
     print(f"actual_num_labels : {actual_num_labels}")
     mAP, ap = compute_map(all_detections, all_annotations, conf_index=0,
                           map_frame=None, train=True,
-                          actual_num_labels=actual_num_labels)
+                          actual_num_labels=actual_num_labels,
+                          params=model.params)
     return mAP, ap
 
 
-def get_single_img_map(cfg_path, det, label_csv_mame, root_dir, params):
+def get_single_img_map(cfg_path, det, label_csv_mame, params):
     map_frame = pd.DataFrame(columns=['mAP', 'ap'])
     assert params["height"] % 32 == 0
     assert params["height"] > 32
@@ -150,39 +151,41 @@ def get_single_img_map(cfg_path, det, label_csv_mame, root_dir, params):
     # put to evaluation mode so that gradient wont be calculated
     model.eval()
     transform = transforms.Compose(
-        [transforms.Resize(model.params["height"]), transforms.ToTensor(),
-         transforms.Normalize([0.485, 0.456, 0.406],
-                              [0.229, 0.224, 0.225])])
-    data = CustData(label_csv_mame, root_dir, transform=transform,
-                    detection_phase=True)
+            [LetterBoxImage_cv([params['height'], params['height']]),
+             ImgToTensorCv(), transforms.Normalize([0.485, 0.456, 0.406],
+                                                   [0.229, 0.224, 0.225])])
+
+    data = CustDataCV(label_csv_mame, transform=transform,
+                      detection_phase=True)
     data_loader = DataLoader(data, shuffle=False,
-                             batch_size=model.params['batch_size'],
+                             batch_size=1,
                              collate_fn=my_collate_detection,
                              num_workers=0, worker_init_fn=worker_init_fn)
     for original_imgs, images, imlist, im_dim_list, labels in data_loader:
         if model.params['cuda']:
             images = images.cuda()
         prediction = model(images)
-        output = filter_results(prediction)
+        output = filter_results(prediction, params)
         mAP, ap = simgle_img_map(model, output, labels)
         map_frame.loc[imlist[-1], 'mAP'] = mAP
         map_frame.loc[imlist[-1], 'ap'] = ap
     return map_frame
 
 
-def main(params):
+def main(weight_path):
     # change cuda to True if you wish to use gpu
     det = "../2ProcessedData/"
     cfg_path = "../4Others/yolo.cfg"
     label_csv_mame = '../1TestData/label.csv'
-    root_dir = "../1TestData"
-    detection(cfg_path, det, label_csv_mame, root_dir, params)
-    df = get_single_img_map(cfg_path, det, label_csv_mame, root_dir, params)
+    name_list = ["img_name", "c", "gx", "gy", "gw", "gh"]
+    test_img_txt_path = "../1TestData/*.txt"
+    prep_labels(test_img_txt_path, name_list, label_csv_mame)
+    params = prep_params(weight_path, label_csv_mame)
+    detection(cfg_path, det, label_csv_mame, params)
+    df = get_single_img_map(cfg_path, det, label_csv_mame, params)
     return df
 
 
 if __name__ == '__main__':
-    weight_param = ""
-    with open(weight_param) as fp:
-        params = json.load(fp)
-    df = main(params)
+    weight_path = "../4TrainingWeights/human_eye/tune/2019-02-03_01_02_32.525378/2019-02-03_02_47_27.382756.txt"
+    df = main(weight_path)
